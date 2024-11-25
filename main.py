@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import Optional
 
-app = FastAPI(title="Sample FastAPI App")
+app = FastAPI(title="Senya Backend API")
 
 class Item(BaseModel):
     name: str

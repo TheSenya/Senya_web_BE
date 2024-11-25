@@ -24,4 +24,3 @@ curl -X POST http://localhost:8000/items/ \
     -H "Content-Type: application/json" \
     -d '{"name": "Widget", "price": 9.99}'
 ```
-    
