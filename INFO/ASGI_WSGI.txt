@@ -1,0 +1,28 @@
+WSGI (Web Server Gateway Interface):
+   - Introduced in PEP 333 (2003) as the standard interface between web servers and Python web applications
+   - Synchronous and single-threaded by design
+   - Works by passing a single HTTP request at a time through a callable function with this signature:
+
+ASGI (Asynchronous Server Gateway Interface):
+   - Introduced in PEP 3333 (2011) as a successor to WSGI
+   - Designed to support both synchronous and asynchronous applications
+   - Works by passing a single HTTP request at a time through a callable function with this signature:
+
+Key Differences
+--------------
+
+Request Handling:
+• WSGI: One request -> one response
+• ASGI: Supports bidirectional communication and multiple events per connection
+
+Protocol Support:
+• WSGI: HTTP only
+• ASGI: HTTP, WebSocket, HTTP/2, and other protocols
+
+Common Implementations:
+• WSGI: Gunicorn, uWSGI
+• ASGI: Uvicorn, Hypercorn, Daphne
+
+Framework Support:
+• WSGI: Flask, traditional Django
+• ASGI: FastAPI, modern Django, Starlette
