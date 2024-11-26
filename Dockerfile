@@ -48,7 +48,7 @@ COPY . .
 EXPOSE 8000
 
 # Command to run the application
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 # ^ This command runs the FastAPI application using Uvicorn ASGI server
 #   - "main:app" specifies the Python module containing the FastAPI app and the app object to use
 #     "main" is the name of the Python module (file) containing the FastAPI app definition (main.py)
