@@ -25,6 +25,7 @@ WORKDIR /app
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     gcc \
+    postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 # ^ Update package list and install required system packages:
 #   - apt-get update: Updates the package index files to get latest package info

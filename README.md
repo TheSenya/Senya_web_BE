@@ -25,3 +25,24 @@ curl -X POST http://localhost:8000/items/ \
     -d '{"name": "Widget", "price": 9.99}'
 ```
 
+Python Venv
+to activate:
+```
+source myenv/bin/activate
+```
+to deactivate:
+```
+deactivate
+```
+
+postgres:
+```bash
+docker-compose exec -it db psql -U senya -d senya_db
+```
+
+Alembic:
+```bash
+alembic init alembic # initialize alembic (only do this once)
+alembic revision --autogenerate -m "initial migration" # create a new migration
+alembic upgrade head # apply the migration
+```
