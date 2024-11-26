@@ -3,7 +3,7 @@ from typing import Optional
 
 class Settings(BaseSettings):
     APP_NAME: str = "Senya Web Backend"
-    DEBUG: bool = False
+    DEBUG: bool
     DATABASE_URL: str
     API_V1_STR: str = "/api/v1"
     SECRET_KEY: str
