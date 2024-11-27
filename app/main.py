@@ -2,7 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from core.config import settings
+from app.core.config import settings    
 
 # from pydantic import BaseModel
 # from typing import Optional

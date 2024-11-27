@@ -1,7 +1,9 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from app.schemas.login import LoginRequest, LoginResponse
-from core.database import get_db
+from app.core.database import get_db
+from app.core.security import verify_password, get_password_hash
 import logging
 
 logging.basicConfig(
@@ -12,29 +14,26 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 router = APIRouter(
-    prefix="/login",
+    prefix="/auth",
     tags=["authentication"]
 )
 
-@router.post("/", response_model=LoginResponse)
+@router.post("/login", response_model=LoginResponse)
 async def login(login_data: LoginRequest, db: Session = Depends(get_db)):
     log.info(f"Login attempt with username: {login_data.username}")
     
-    # Use raw SQL with parameters to prevent SQL injection
+    # Get user and hashed password
     query = """
-        SELECT username, password 
+        SELECT username, password_hash 
         FROM users 
-        WHERE username = :username AND password = :password
+        WHERE username = :username
     """
     result = db.execute(
-        query, 
-        {
-            "username": login_data.username,
-            "password": login_data.password
-        }
+        text(query), 
+        {"username": login_data.username}
     ).first()
     
-    if not result:
+    if not result or not verify_password(login_data.password, result.password_hash):
         raise HTTPException(
             status_code=401,
             detail="Incorrect username or password"
@@ -53,7 +52,7 @@ async def register(login_data: LoginRequest, db: Session = Depends(get_db)):
         FROM users 
         WHERE username = :username
     """
-    existing_user = db.execute(check_query, {"username": login_data.username}).first()
+    existing_user = db.execute(text(check_query), {"username": login_data.username}).first()
     
     if existing_user:
         raise HTTPException(
@@ -61,19 +60,22 @@ async def register(login_data: LoginRequest, db: Session = Depends(get_db)):
             detail="Username already registered"
         )
     
-    # Insert new user
+    # Hash the password
+    hashed_password = get_password_hash(login_data.password)
+    
+    # Insert new user with hashed password
     insert_query = """
-        INSERT INTO users (username, password, created_at, updated_at) 
-        VALUES (:username, :password, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        INSERT INTO users (username, password_hash, created_at, updated_at) 
+        VALUES (:username, :password_hash, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         RETURNING username
     """
     
     try:
         result = db.execute(
-            insert_query,
+            text(insert_query),
             {
                 "username": login_data.username,
-                "password": login_data.password
+                "password_hash": hashed_password
             }
         )
         db.commit()
