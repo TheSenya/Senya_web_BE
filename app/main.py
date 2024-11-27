@@ -65,22 +65,3 @@ app.add_middleware(
 
 # Include API router
 app.include_router(api_router, prefix=settings.API_V1_STR)
-
-
-# class Item(BaseModel):
-#     name: str
-#     description: Optional[str] = None
-#     price: float
-#     tax: Optional[float] = None
-
-# @app.get("/")
-# async def root():
-#     return {"message": "Hello World"}
-
-# @app.get("/items/{item_id}")
-# async def read_item(item_id: int):
-#     return {"item_id": item_id}
-
-# @app.post("/items/")
-# async def create_item(item: Item):
-#     return item
