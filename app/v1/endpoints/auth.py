@@ -87,3 +87,7 @@ async def register(login_data: LoginRequest, db: Session = Depends(get_db)):
             status_code=500,
             detail="Error creating user"
         )
+    
+@router.post("/logout")
+async def logout(db: Session = Depends(get_db)):
+    return {"message": "Logout successful"}
