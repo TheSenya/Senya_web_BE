@@ -18,6 +18,7 @@ router = APIRouter(
     tags=["authentication"]
 )
 
+
 @router.post("/login", response_model=LoginResponse)
 async def login(login_data: LoginRequest, db: Session = Depends(get_db)):
     log.info(f"Login attempt with username: {login_data.username}")
