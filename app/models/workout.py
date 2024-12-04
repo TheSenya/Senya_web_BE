@@ -14,3 +14,4 @@ class Workouts(BaseModel):
     date = Column(DateTime, default=func.now())
 
     
+ 
