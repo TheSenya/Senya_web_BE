@@ -25,7 +25,12 @@ curl -X POST http://localhost:8000/items/ \
     -d '{"name": "Widget", "price": 9.99}'
 ```
 
+
 Python Venv
+to create venv
+```
+python3 -m venv .venv
+```
 to activate:
 ```
 source myenv/bin/activate
