@@ -33,7 +33,7 @@ python3 -m venv .venv
 ```
 to activate:
 ```
-source myenv/bin/activate
+source .venv/bin/activate
 ```
 to deactivate:
 ```
