@@ -42,7 +42,7 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application code into the image
+# Copy the rest of the application code
 COPY . .
 
 # Expose the port that the application listens on

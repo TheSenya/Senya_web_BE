@@ -5,6 +5,8 @@ from app.schemas.login import LoginRequest, LoginResponse
 from app.core.database import get_db
 from app.core.security import verify_password, get_password_hash
 import logging
+import uuid
+
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -25,7 +27,7 @@ async def login(login_data: LoginRequest, db: Session = Depends(get_db)):
     # Get user and hashed password
     query = """
         SELECT username, password_hash 
-        FROM users 
+        FROM users
         WHERE username = :username
     """
     result = db.execute(
@@ -49,7 +51,7 @@ async def register(login_data: LoginRequest, db: Session = Depends(get_db)):
     # Check if user exists
     check_query = """
         SELECT username 
-        FROM users 
+        FROM users
         WHERE username = :username
     """
     existing_user = db.execute(text(check_query), {"username": login_data.username}).first()
@@ -62,18 +64,22 @@ async def register(login_data: LoginRequest, db: Session = Depends(get_db)):
     
     # Hash the password
     hashed_password = get_password_hash(login_data.password)
+
+    # generate a unique id for the user
+    user_id =  uuid.uuid4()
     
     # Insert new user with hashed password
     insert_query = """
-        INSERT INTO users (username, password_hash, created_at, updated_at) 
-        VALUES (:username, :password_hash, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        INSERT INTO users (id, username, password_hash, created_at, updated_at) 
+        VALUES (:id ,:username, :password_hash, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         RETURNING username
     """
     
     try:
         result = db.execute(
-            text(insert_query),
-            {
+            text(insert_query), 
+            {   
+                "id": user_id,
                 "username": login_data.username,
                 "password_hash": hashed_password
             }
