@@ -51,3 +51,14 @@ alembic init alembic # initialize alembic (only do this once)
 alembic revision --autogenerate -m "initial migration" # create a new migration
 alembic upgrade head # apply the migration
 ```
+
+check if DB is running
+```
+docker-compose ps
+```
+
+running Alembic inside docker
+```
+docker-compose exec web alembic revision --autogenerate -m "initial migration"
+docker-compose exec web alembic upgrade head
+```
