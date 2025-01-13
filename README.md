@@ -68,3 +68,12 @@ docker-compose exec db psql -U senya -d senya_db -c "\dt"
 ```
 
 docker-compose down -v (stops all running containers and deletes the DB, -v removes db vo)
+
+stop all docker containers
+```
+docker stop $(docker ps -a -q)
+```
+remove all docker containers
+```
+docker rm $(docker ps -a -q)
+```

@@ -19,6 +19,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/health")
+async def health():
+    return {"status": "healthy"}
 
 # This code configures CORS policies for your FastAPI backend. Here's a detailed breakdown:
 # What is CORS?

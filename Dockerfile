@@ -16,14 +16,12 @@ ENV PYTHONUNBUFFERED=1
 #   - This ensures that you see Python output in real-time in your Docker logs
 #   - Particularly useful for debugging and logging, as you don't have to wait for the buffer to fill up
 #   - Prevents Python from buffering output which could be lost if the container crashes
-ENV UVICORN_HOST=0.0.0.0
-ENV UVICORN_PORT=8000
 
 # Set the working directory in the container
 WORKDIR /app
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y awscli && apt-get install -y\
     gcc \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
@@ -42,7 +40,9 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application code
+# COPY [OPTIONS] <src> ... <dest>
+# Copies the new files or directories from <src> (ie what ever files we have in root folder)
+# into <dest> (this is in docker and cuz we specified WORKDIR it will copy to that /app)
 COPY . .
 
 # Expose the port that the application listens on

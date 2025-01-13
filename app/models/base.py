@@ -10,4 +10,3 @@ class BaseModel(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
 
-

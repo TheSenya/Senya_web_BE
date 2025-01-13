@@ -18,7 +18,7 @@ class Workouts(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, index=True, nullable=False)
-    exercise = Column(PickleType, nullable = False )
+    exercise = Column(PickleType, nullable=False)
     date = Column(Date, default=func.current_date())
     duration = Column(Integer, nullable=True)
 

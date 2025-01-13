@@ -9,9 +9,6 @@ services:
       dockerfile: Dockerfile
     # Set a custom container name instead of auto-generated one
     container_name: senya_backend
-    # Command to run when container starts
-    # --reload enables hot-reloading for development
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     # Mount the local backend directory to /app in the container
     # This enables hot-reloading and direct code editing
     volumes:
@@ -29,14 +26,11 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
       # Use service name 'db' as host - Docker's internal DNS will resolve this
-      - DATABASE_HOST=db
+      - DATABASE_HOST=${DATABASE_HOST}
       - DATABASE_PORT=${DATABASE_PORT}
     # Ensure database is started before backend
     depends_on:
       - db
-    # Connect to custom network - enables service discovery
-    networks:
-      - senya_network
     # Restart policy - container will restart unless manually stopped
     restart: unless-stopped
 
@@ -56,8 +50,6 @@ services:
     # Expose PostgreSQL port - useful for external tools like pgAdmin
     ports:
       - "5432:5432"
-    networks:
-      - senya_network
     restart: unless-stopped
     # Health check ensures database is ready to accept connections
     healthcheck:
@@ -70,17 +62,5 @@ services:
       # How many retries before marking as unhealthy
       retries: 5
 
-# Custom network configuration
-networks:
-  # Create a bridge network for service isolation
-  senya_network:
-    # Bridge driver is the default network driver
-    driver: bridge
-
-# Named volumes configuration
 volumes:
-  # Define named volume for PostgreSQL data persistence
-  # This ensures data survives container restarts/removals
-  postgres_data:
-    # Uses default local driver
-    # Data is stored in /var/lib/docker/volumes/
+  postgres_data: 
