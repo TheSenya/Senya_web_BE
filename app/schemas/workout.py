@@ -8,6 +8,6 @@ class WorkoutCreate(BaseModel):
     date: date
     duration: int
 
-class WorkoutResponse(BaseModel):
+# class WorkoutResponse(BaseModel):
 
 
