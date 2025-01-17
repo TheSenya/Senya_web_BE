@@ -6,6 +6,7 @@ class LoginRequest(BaseModel):
 
 class LoginResponse(BaseModel):
     access_token: str
+    refresh_token: str
     username: str
 
 class Token(BaseModel):

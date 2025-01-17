@@ -95,3 +95,5 @@ Run the following command to push this image to your newly created AWS repositor
 ```
 docker push 677276096858.dkr.ecr.us-east-1.amazonaws.com/senya_web_repo:latest
 ```
+
+docker build  --platform=linux/amd64 -t senya_web_repo . 

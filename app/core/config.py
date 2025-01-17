@@ -17,6 +17,12 @@ class Settings(BaseSettings):
     DATABASE_HOST: str
     DATABASE_PORT: int
 
+    FRONTEND_URL: str = "http://localhost:5173"
+    CORS_ORIGINS: list = [
+        "http://localhost:5173",
+        "http://localhost:8000",
+        # Add other allowed origins as needed
+    ]
 
     class Config:
         env_file = ".env"

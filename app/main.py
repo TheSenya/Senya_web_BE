@@ -13,11 +13,15 @@ app = FastAPI(title=settings.APP_NAME, debug=settings.DEBUG, openapi_url=f"{sett
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.get("/")
+async def read_root():
+    return {"message": "Hello, World!"}
 
 @app.get("/health")
 async def health():

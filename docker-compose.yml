@@ -16,7 +16,7 @@ services:
     # Port mapping - host_port:container_port
     # Access the API on localhost:8000
     ports:
-      - "${BACKEND_PORT}:${BACKEND_PORT}"
+      - "8000:8000"
     # Environment variables for the backend service
     environment:
       - DEBUG=1
