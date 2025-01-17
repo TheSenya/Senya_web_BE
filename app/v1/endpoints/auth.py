@@ -1,6 +1,7 @@
 #TODO
 # 1. return hints
 # 2. implement function row2dict and rows2dict for conversion of sqlalchemy obj to dicts
+# 3. update errors for the functions and endpoints
 
 
 from fastapi import APIRouter, HTTPException, Depends
