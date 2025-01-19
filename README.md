@@ -78,6 +78,11 @@ remove all docker containers
 docker rm $(docker ps -a -q)
 
 ```
+list all docker containers including stopped ones
+```
+docker container ls -a
+```
+
 Retrieve an authentication token and authenticate your Docker client to your registry. Use the AWS CLI:
 ```
 aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 677276096858.dkr.ecr.us-east-1.amazonaws.com
@@ -97,3 +102,6 @@ docker push 677276096858.dkr.ecr.us-east-1.amazonaws.com/senya_web_repo:latest
 ```
 
 docker build  --platform=linux/amd64 -t senya_web_repo . 
+
+# Renaming docker images
+docker tag <old name> <new name>

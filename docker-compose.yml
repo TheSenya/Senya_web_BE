@@ -2,18 +2,15 @@ services:
   # FastAPI backend service
   backend:
     # Build configuration for the container
-    build:
-      # Set build context to the backend directory
-      context: .
-      # Specify the Dockerfile to use
-      dockerfile: Dockerfile
+    build: .
     # Set a custom container name instead of auto-generated one
     container_name: senya_backend
     # Mount the local backend directory to /app in the container
     # This enables hot-reloading and direct code editing
     volumes:
       - .:/app
-    # Port mapping - host_port:container_port
+    # Port 
+    mapping - host_port:container_port
     # Access the API on localhost:8000
     ports:
       - "8000:8000"

@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     CORS_ORIGINS: list = [
         "http://localhost:5173",
         "http://localhost:8000",
+        "http://senya.ca",
         # Add other allowed origins as needed
     ]
 
