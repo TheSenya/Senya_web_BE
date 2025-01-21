@@ -105,3 +105,6 @@ docker build  --platform=linux/amd64 -t senya_web_repo .
 
 # Renaming docker images
 docker tag <old name> <new name>
+
+
+docker compose exec backend alembic revision --autogenerate -m "add notes"

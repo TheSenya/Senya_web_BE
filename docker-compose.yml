@@ -9,8 +9,6 @@ services:
     # This enables hot-reloading and direct code editing
     volumes:
       - .:/app
-    # Port 
-    mapping - host_port:container_port
     # Access the API on localhost:8000
     ports:
       - "8000:8000"
