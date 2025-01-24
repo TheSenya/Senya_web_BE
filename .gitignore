@@ -1,3 +1,5 @@
 .env*
 .venv
 *.sh
+logs/
+*.log

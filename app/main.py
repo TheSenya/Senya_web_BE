@@ -1,13 +1,15 @@
 # main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
-from app.core.config import settings    
+from app.core.config import settings
+from app.config.logger import logger 
 
 # from pydantic import BaseModel
 # from typing import Optional
 
 from .v1.router import api_router
+
+logger.info("Starting application...")
 
 app = FastAPI(title=settings.APP_NAME, debug=settings.DEBUG, openapi_url=f"{settings.API_V1_STR}/openapi.json")
 

@@ -1,10 +1,9 @@
 # TODO
-# 1. return hints
-# 2. implement function row2dict and rows2dict for conversion of sqlalchemy obj to dicts
-# 3. update errors for the functions and endpoints
+# 1. update errors for the functions and endpoints
+# 2. create user schemas ,token schemas , etc schemas
 
-
-from fastapi import APIRouter, HTTPException, Depends, Cookie
+from datetime import datetime
+from fastapi import APIRouter, HTTPException, Depends, Cookie, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
@@ -12,179 +11,76 @@ from sqlalchemy import text
 from app.schemas.login import LoginRequest, LoginResponse
 from app.core.database import get_db
 from app.core.security import verify_password, get_password_hash
-import logging
+from app.config.logger import logger
 import uuid
 from jose import JWTError, jwt
-from datetime import datetime, timedelta
-from app.core.config import settings
-from typing import Optional
+
 from app.core.helper import row2dict
-
-logging.basicConfig(
-    level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-
-log = logging.getLogger(__name__)
+from app.core.auth import token_auth, create_access_token, create_refresh_token, refresh_access_token
+from app.config.constants import REFRESH_TOKEN_EXPIRE_DAYS
+from app.core.config import settings
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
-REFRESH_TOKEN_EXPIRE_DAYS = 7
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
-
-
-# creates new access tokens
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-
-    to_encode.update({"exp": expire, "token_type": "access"})
-    encoded_jwt = jwt.encode(
-        to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM
-    )
-    return encoded_jwt
-
-
-# creates new refresh tokens
-def create_refresh_token(data: dict) -> str:
-    to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
-    to_encode.update({"exp": expire, "token_type": "refresh"})
-    return jwt.encode(data, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
-
-
-async def verify_token(
-    token: str, refresh_token: str | None = None, db: Session = Depends(get_db)
-) -> tuple[str, str | None]:
-    """
-    Verifies the access token or refresh token and returns the username
-    """
-    credentials_exception = HTTPException(
-        status_code=401, detail="Could not validate credentials"
-    )
-
+#TODO
+def get_user(username: str = "", user_id: str = "", db: Session = Depends(get_db)):
     try:
-        payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
-        )
-        username: str = payload.get("sub")
+        user_id = uuid.UUID(user_id)
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid UUID in token")
+    
+    if username is("" or None):
+        raise HTTPException(status_code=401, detail="Invalid username")
+    
+    query = "SELECT * FROM users WHERE username = :username AND id = :id"
+    user = db.execute(text(query), {"username": username, "id": user_id}).first()
 
-        if username is None:
-            raise credentials_exception
-    except JWTError:
-        # If refresh token is provided, try to refresh the access token
-        if refresh_token:
-            try:
-                new_access_token = await refresh_access_token(refresh_token, db)
-                # Decode the new token to get user info
-                payload = jwt.decode(
-                    new_access_token,
-                    settings.SECRET_KEY,
-                    algorithms=[settings.ALGORITHM],
-                )
-                username = payload.get("sub")
-                if username is None:
-                    raise credentials_exception
-                return username, new_access_token
-            except HTTPException:
-                raise credentials_exception
-        raise credentials_exception
-
-    return username, None
-
-
-async def refresh_access_token(refresh_token: str, db: Session) -> str:
-    """
-    Validates refresh token and generates new access token
-    Returns new access token if refresh token is valid
-    """
-    try:
-        payload = jwt.decode(
-            refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
-        )
-        username: str = str(payload.get("sub"))
-
-        # Verify user exists
-        query = "SELECT * FROM users WHERE username = :username"
-        user = db.execute(text(query), {"username": username}).first()
-
-        if user is None:
-            raise HTTPException(status_code=401, detail="User not found")
-
-        # Generate new access token
-        new_access_token = create_access_token(
-            data={"sub": username},
-            expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
-        )
-
-        return new_access_token
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid refresh token")
-
-
-async def verify_refresh_token(refresh_token: str, db: Session):
-    try:
-        payload = jwt.decode(
-            refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
-        )
-        username: str = str(payload.get("sub"))
-
-        if username is None:
-            raise HTTPException(status_code=401, detail="Invalid refresh token")
-
-        # Verify user exists
-        query = "SELECT * FROM users WHERE username = :username"
-        user = db.execute(text(query), {"username": username}).first()
-
-        if user is None:
-            raise HTTPException(status_code=401, detail="User not found")
-
-        return username
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid refresh token")
+    return row2dict(user)
 
 
 async def get_current_user(
-    token: str = Depends(oauth2_scheme),
-    refresh_token: str | None = Cookie(
-        None, alias="refresh_token"
-    ),  # Extract from cookies
+    request: Request, 
     db: Session = Depends(get_db),
-):
-    """
-    Gets the current user based on the verified token
-    """
-    username, new_access_token = await verify_token(token, refresh_token, db)
+    token: str =  Depends(oauth2_scheme)) -> dict | None:
 
-    query = "SELECT * FROM users WHERE username = :username"
-    user = db.execute(text(query), {"username": username}).first()
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials 1",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    
+    try:
+        logger.debug('get current 1')
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        logger.debug('get current 2')
+        user_id = payload.get("sub") # uuid is stored as a string in the jwt
+        logger.debug('get current 2.5')
+        username = payload.get("name")
+        logger.debug('get current 3')
+        if username is None or user_id is None:
+            logger.debug('get current user err 1')
+            #raise credentials_exception
+        
+    except Exception as e:
+        logger.debug('get current user err 2 {e}')
+        #raise credentials_exception
 
-    if user is None:
-        raise HTTPException(
-            status_code=401,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    #user = get_user(username, user_id, db)
 
-    # If we refreshed the token, attach it to the user object
-    if new_access_token:
-        user = dict(user)
-        user["new_access_token"] = new_access_token
-
-    return user
+    
+    #return user
+    return None
 
 
 @router.post("/login", response_model=LoginResponse)
 async def login(login_data: LoginRequest, db: Session = Depends(get_db)):
-    log.info(f"Login attempt with username: {login_data.username}")
+    logger.info(f"Login attempt with username: {login_data.username}")
 
     # Get user and hashed password
     query = """
-        SELECT username, password_hash 
+        SELECT id, username, password_hash
         FROM users
         WHERE username = :username
     """
@@ -198,12 +94,9 @@ async def login(login_data: LoginRequest, db: Session = Depends(get_db)):
     ):
         raise HTTPException(status_code=401, detail="Incorrect username or password")
 
-    access_token = create_access_token(
-        data={"sub": res.username},
-        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
-    )
+    access_token = create_access_token(data={"sub": str(res.id), "name": res.username, "iat": datetime.now()})
 
-    refresh_token = create_refresh_token(data={"sub": res.username})
+    refresh_token = create_refresh_token(data={"sub": str(res.id), "name": res.username, "iat": datetime.now()})
 
     # Create response
     response = JSONResponse(
@@ -236,15 +129,19 @@ async def register(login_data: LoginRequest, db: Session = Depends(get_db)):
         text(check_query), {"username": login_data.username}
     ).first()
 
+    logger.debug(f'1')
+
     if existing_user:
+        logger.debug(f'1.1')
         raise HTTPException(status_code=400, detail="Username already registered")
 
     # Hash the password
     hashed_password = get_password_hash(login_data.password)
-
+    logger.debug(f'2')
     # generate a unique id for the user
     user_id = uuid.uuid4()
 
+    logger.debug(f'3')
     # Insert new user with hashed password
     insert_query = """
         INSERT INTO users (id, username, password_hash, created_at, updated_at) 
@@ -253,7 +150,7 @@ async def register(login_data: LoginRequest, db: Session = Depends(get_db)):
     """
 
     try:
-        result = db.execute(
+        db.execute(
             text(insert_query),
             {
                 "id": user_id,
@@ -261,11 +158,13 @@ async def register(login_data: LoginRequest, db: Session = Depends(get_db)):
                 "password_hash": hashed_password,
             },
         )
+        logger.debug(f'4')
         db.commit()
         return {"message": "User created successfully"}
     except Exception as e:
         db.rollback()
-        log.error(f"Error creating user: {str(e)}")
+        logger.debug(f'5')
+        logger.error(f"Error creating user: {str(e)}")
         raise HTTPException(status_code=500, detail="Error creating user")
 
 
@@ -285,29 +184,23 @@ async def logout(db: Session = Depends(get_db)):
     return response
 
 
-# Add an example protected endpoint
 @router.get("/me")
-async def read_users_me(current_user: dict = Depends(get_current_user)):
-    user_dict = row2dict(current_user)
+@token_auth()
+async def read_me(request: Request
+):  
+    current_user = await get_current_user(request)
+    logger.debug(f'/me')
+    return current_user
 
-    user_data = {
-        "id": user_dict["id"],
-        "username": user_dict["username"],
-        "created_at": user_dict["created_at"],
-        "updated_at": user_dict["updated_at"],
-    }
-
-    return user_data
 
 
 @router.post("/refresh")
 async def refresh_token(
-    refresh_token: str | None = Cookie(None, alias="refresh_token"),
-    db: Session = Depends(get_db),
+    refresh_token: str | None = Cookie(None, alias="refresh_token")
 ):
     if not refresh_token:
         raise HTTPException(401, "Refresh token missing")
 
-    username = await verify_refresh_token(refresh_token, db)
-    new_access_token = create_access_token({"sub": username})
+    new_access_token = await refresh_access_token(refresh_token)
     return {"access_token": new_access_token}
+
