@@ -27,6 +27,8 @@ from app.core.config import settings
 from app.schemas.login import RegisterRequest, RegisterResponse, Token
 from app.schemas.user import User
 
+from app.v1.endpoints.note import create_default_folder
+
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
@@ -35,7 +37,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 # TODO
 def get_user(username: str = "", user_id: str = "", db: Session = Depends(get_db)):
     try:
-        user_id = uuid.UUID(user_id)  # TODO: double check this
+        uuid_user_id = uuid.UUID(user_id)  # TODO: double check this
     except ValueError:
         raise HTTPException(status_code=401, detail="Invalid UUID in token")
 
@@ -43,7 +45,7 @@ def get_user(username: str = "", user_id: str = "", db: Session = Depends(get_db
         raise HTTPException(status_code=401, detail="Invalid username")
 
     query = "SELECT * FROM users WHERE username = :username AND id = :id"
-    user = db.execute(text(query), {"username": username, "id": user_id}).first()
+    user = db.execute(text(query), {"username": username, "id": uuid_user_id}).first()
 
     return row2dict(user)
 
@@ -88,31 +90,40 @@ async def login(login_data: LoginRequest, db: Session = Depends(get_db)):
 
     # Get user and hashed password
     query = """
-        SELECT id, email, password_hash
+        SELECT id, email, password_hash, username
         FROM users
         WHERE email = :email
     """
 
     res = db.execute(text(query), {"email": login_data.email}).first()
 
+    logger.debug(f"res: {res}")
+    logger.debug(f"res.dict: {row2dict(res)}")
+
+    res_dict = row2dict(res)
     if (
-        not res
-        or not res.email
-        or not verify_password(login_data.password, res.password_hash)
+        not res_dict
+        or not res_dict.get("email")
+        or not verify_password(login_data.password, res_dict.get("password_hash", ""))
     ):
         raise HTTPException(status_code=401, detail="Incorrect username or password")
 
     access_token = create_access_token(
-        data={"sub": str(res.id), "name": res.email, "iat": datetime.now()}
+        data={"sub": str(res_dict.get("id")), "name": res_dict.get("email"), "iat": datetime.now()}
     )
 
     refresh_token = create_refresh_token(
-        data={"sub": str(res.id), "name": res.email, "iat": datetime.now()}
+        data={"sub": str(res_dict.get("id")), "name": res_dict.get("email"), "iat": datetime.now()}
     )
 
     # Create response
     response = JSONResponse(
-        content={"access_token": access_token, "username": res.email}
+        content={
+            "access_token": access_token,
+            "username": res_dict.get("username", ""),
+            "email": res_dict.get("email", ""),
+            "id": str(res_dict.get("id", "")), 
+        }
     )
 
     # Set refresh token as httpOnly cookie
@@ -171,13 +182,18 @@ async def register(register_data: RegisterRequest, db: Session = Depends(get_db)
             },
         ).one()
 
+        logger.debug(f"register_data.username: {register_data.username}")
+        logger.debug(f"user_id: {user_id}")
+        # create a default root folder for the user
+        create_default_folder(db, register_data.username, user_id)
+
         # commit the transaction
         db.commit()
 
         # get the user data from db response
-        logger.debug(f'res: {res}')
+        logger.debug(f"res: {res}")
         user_data = row2dict(res)
-        logger.debug(f'user_data: {user_data}')
+        logger.debug(f"user_data: {user_data}")
         # create access token
         access_token = create_access_token(
             data={
@@ -187,8 +203,17 @@ async def register(register_data: RegisterRequest, db: Session = Depends(get_db)
             }
         )
 
+        new_user = User(
+            username=user_data.get("username", None),
+            email=user_data.get("email", None),
+            id=str(user_data.get("id", None)),
+            is_active=user_data.get("is_active", None),
+        )
+
         # return the user data and access token
-        return RegisterResponse(user=User(username=user_data['username'], email=user_data['email'], id=user_data['id']), token=Token(access_token=access_token, token_type="access"))
+        return RegisterResponse(
+            user=new_user, token=Token(access_token=access_token, token_type="access")
+        )
     except Exception as e:
         db.rollback()
         logger.error(f"Error creating user: {str(e)}")

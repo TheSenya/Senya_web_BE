@@ -3,6 +3,26 @@ from pydantic import BaseModel
 from datetime import datetime, date
 from typing import List, Dict
 
+class NoteFolder(BaseModel):
+    id: int
+    user_id: str
+    name: str
+    parent_id: int | None
+    is_root: bool
+
+    class Config:
+        from_attributes = True 
+
+class Note(BaseModel):
+    id: int
+    user_id: str
+    name: str
+    content: Dict
+    folder_id: int
+
+    class Config:
+        from_attributes = True 
+
 class NoteFolderCreate(BaseModel):
     user_id: str
     name: str

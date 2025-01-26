@@ -12,37 +12,42 @@ from app.schemas.notes import (
     NoteFolderEdit,
     NoteFolderDelete,
 )
-from app.models.notes import Note, NoteFolder
-from app.models.user import User
-from backend.app.core.auth import token_auth
+from app.schemas.notes import Note, NoteFolder
+from app.schemas.user import User
+from app.core.auth import token_auth
 from app.config.logger import logger
+from app.core.helper import row2dict
 
 router = APIRouter(prefix="/note", tags=["notes"])
 
 
-# Create a default Root folder when a user is created
-@event.listens_for(User, "after_insert")
-def create_default_folder(mapper, db, user):
+# Create a default Root folder
+def create_default_folder(db, username, user_id) -> NoteFolder:
     logger.debug(
-        f"create root folder for user: {user.username} with id: {user.user_id}"
+        f"create root folder for user: {username} with id: {user_id}"
     )
 
     query = """
         INSERT INTO note_folder (user_id, name, parent_id, is_root) 
         VALUES (:user_id ,:name, :parent_id, :is_root)
-        RETURNING *;
+        RETURNING id, user_id, name, parent_id, is_root;
     """
     res = db.execute(
         text(query),
         {
-            "user_id": user.user_id,
-            "name": user.username,
+            "user_id": user_id,
+            "name": 'ROOT',
             "parent_id": None,
             "is_root": True,
         },
-    )
-    logger.debug(f"root note create {res}")
-    return
+    ).one()
+    logger.debug(f"create root folder res: {res}")
+    logger.debug(f"create root folder res DICT: {row2dict(res)}")
+
+    new_folder = row2dict(res)
+
+    logger.debug(f"root note create {new_folder}")
+    return NoteFolder(id=new_folder["id"], user_id=str(new_folder["user_id"]), name=new_folder["name"], parent_id=new_folder["parent_id"], is_root=new_folder["is_root"])
 
 
 # Note Folder endpoints
@@ -89,5 +94,5 @@ def delete_note(note: NoteDelete, db: Session = Depends(get_db)):
 
 
 @router.get("/{user_id}")
-def get_user_notes(user_id: str, folder_id: int = None, db: Session = Depends(get_db)):
+def get_user_notes(user_id: str, folder_id: int | None = None, db: Session = Depends(get_db)):
     return
