@@ -1,6 +1,6 @@
 from app.models.base import BaseModel
 from sqlalchemy import (
-    Column, String, Integer, ForeignKey, Text, DateTime, func
+    Column, String, Integer, ForeignKey, Text, DateTime, func, Boolean
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID, JSONB
@@ -11,11 +11,12 @@ class NoteFolder(BaseModel):
     id = Column(Integer, primary_key=True)
     user_id = Column(UUID, ForeignKey("users.id"), nullable=True)
     name = Column(String(50), nullable=False)
-    parent_id = Column(Integer, ForeignKey("note_folder.id"), nullable=False)
+    is_root = Column(Boolean, default=False, nullable=False)
+    parent_id = Column(Integer, ForeignKey("note_folder.id"), nullable=True)  # Changed to nullable=True
 
-    user = relationship("User", back_populates="note_folder", cascade="all, delete-orphan")
+    users = relationship("User", back_populates="note_folders")  # Fixed relationship name
     parent = relationship("NoteFolder", remote_side=[id], backref="children")
-    note = relationship('Note', back_populates='note_folder', cascade="all, delete-orphan")
+    notes = relationship('Note', back_populates='folders', cascade="all, delete-orphan")  # Fixed relationship name
 
 class Note(BaseModel):
     __tablename__ = "note"
@@ -26,5 +27,5 @@ class Note(BaseModel):
     folder_id = Column(Integer, ForeignKey("note_folder.id"), nullable=False)
     content = Column(JSONB, nullable=True)
 
-    user = relationship("Note", back_populates="note")
-    folder = relationship("NoteFolder", back_populates="note")
+    users = relationship("User", back_populates="notes")  # Fixed relationship
+    folders = relationship("NoteFolder", back_populates="notes")  # Fixed relationship name

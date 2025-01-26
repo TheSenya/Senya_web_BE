@@ -15,9 +15,9 @@ class User(BaseModel):
     is_active = Column(Boolean)
 
     folders = relationship(
-        "Folder", back_populates="user", cascade="all, delete-orphan"
+        "Folder", back_populates="users", cascade="all, delete-orphan"
     )  
     # One-to-many relationship with the Folder table. Deleting a user also deletes all associated folders.
     notes = relationship(
-        "Note", back_populates="user", cascade="all, delete-orphan"
+        "Note", back_populates="users", cascade="all, delete-orphan"
     ) 

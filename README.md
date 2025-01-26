@@ -59,12 +59,12 @@ docker-compose ps
 
 running Alembic inside docker
 ```bash
-docker-compose exec web alembic revision --autogenerate -m "initial migration"
+docker-compose exec backend alembic revision --autogenerate -m "initial migration"
 docker-compose exec web alembic upgrade head
 ```
 check current db state
 ```bash
-docker-compose exec db psql -U senya -d senya_db -c "\dt"
+docker-compose exec senya_db psql -U senya -d senya_db -c "\dt"
 ```
 
 docker-compose down -v (stops all running containers and deletes the DB, -v removes db vo)

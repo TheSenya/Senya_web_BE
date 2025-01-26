@@ -189,8 +189,6 @@ def token_auth():
                 logger.error(f' Error with jwt decode of access token ')
                 raise HTTPException(401, "Invalid or expired tokens")
 
-            logger.debug(f'username from tokenauth: {username}')
-
             # Execute endpoint
             response = await func(request, *args, **kwargs)
             
