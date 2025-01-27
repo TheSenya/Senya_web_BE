@@ -36,16 +36,21 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 # TODO
 def get_user(username: str = "", user_id: str = "", db: Session = Depends(get_db)):
+
     try:
         uuid_user_id = uuid.UUID(user_id)  # TODO: double check this
     except ValueError:
         raise HTTPException(status_code=401, detail="Invalid UUID in token")
 
-    if username is ("" or None):
+    if not username:
         raise HTTPException(status_code=401, detail="Invalid username")
 
     query = "SELECT * FROM users WHERE username = :username AND id = :id"
     user = db.execute(text(query), {"username": username, "id": uuid_user_id}).first()
+
+
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
 
     return row2dict(user)
 
@@ -61,27 +66,21 @@ async def get_current_user(
     )
 
     try:
-        logger.debug("get current 1")
+
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
-        logger.debug("get current 2")
         user_id = payload.get("sub")  # uuid is stored as a string in the jwt
-        logger.debug("get current 2.5")
         username = payload.get("name")
-        logger.debug("get current 3")
         if username is None or user_id is None:
-            logger.debug("get current user err 1")
-            # raise credentials_exception
+            raise credentials_exception
 
     except Exception as e:
-        logger.debug("get current user err 2 {e}")
-        # raise credentials_exception
+        raise credentials_exception
 
-    # user = get_user(username, user_id, db)
+    user = get_user(username, user_id, db)
 
-    # return user
-    return None
+    return user
 
 
 @router.post("/login", response_model=LoginResponse)
@@ -214,6 +213,7 @@ async def register(register_data: RegisterRequest, db: Session = Depends(get_db)
         return RegisterResponse(
             user=new_user, token=Token(access_token=access_token, token_type="access")
         )
+    
     except Exception as e:
         db.rollback()
         logger.error(f"Error creating user: {str(e)}")
@@ -253,3 +253,4 @@ async def refresh_token(
 
     new_access_token = await refresh_access_token(refresh_token)
     return {"access_token": new_access_token}
+

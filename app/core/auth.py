@@ -132,8 +132,6 @@ def token_auth():
             request: Request,
             *args, **kwargs
         ):  
-
-
             # Extract tokens
             access_token = None
             refresh_token = request.cookies.get("refresh_token")
@@ -189,8 +187,14 @@ def token_auth():
                 logger.error(f' Error with jwt decode of access token ')
                 raise HTTPException(401, "Invalid or expired tokens")
 
+            # Check if the decorated function expects a request parameter
+            logger.debug(f'func.__code__.co_varnames: {func.__code__.co_varnames}') 
+
+            if 'request' in func.__code__.co_varnames:
+                kwargs['request'] = request
+
             # Execute endpoint
-            response = await func(request, *args, **kwargs)
+            response = await func(*args, **kwargs)
             
             # Attach new access token to response (if generated)
             if "new_access_token" in kwargs:

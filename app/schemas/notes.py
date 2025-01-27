@@ -2,10 +2,10 @@ from email import contentmanager
 from pydantic import BaseModel
 from datetime import datetime, date
 from typing import List, Dict
-
+import uuid
 class NoteFolder(BaseModel):
     id: int
-    user_id: str
+    user_id: uuid.UUID
     name: str
     parent_id: int | None
     is_root: bool

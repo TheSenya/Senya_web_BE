@@ -16,8 +16,8 @@ from app.schemas.notes import Note, NoteFolder
 from app.schemas.user import User
 from app.core.auth import token_auth
 from app.config.logger import logger
-from app.core.helper import row2dict
-
+from app.core.helper import row2dict, rows2dict
+from fastapi import Request
 router = APIRouter(prefix="/note", tags=["notes"])
 
 
@@ -47,7 +47,7 @@ def create_default_folder(db, username, user_id) -> NoteFolder:
     new_folder = row2dict(res)
 
     logger.debug(f"root note create {new_folder}")
-    return NoteFolder(id=new_folder["id"], user_id=str(new_folder["user_id"]), name=new_folder["name"], parent_id=new_folder["parent_id"], is_root=new_folder["is_root"])
+    return NoteFolder(id=new_folder["id"], user_id=new_folder["user_id"], name=new_folder["name"], parent_id=new_folder["parent_id"], is_root=new_folder["is_root"])
 
 
 # Note Folder endpoints
@@ -70,9 +70,25 @@ def delete_note_folder(folder: NoteFolderDelete, db: Session = Depends(get_db)):
 
 @router.get("/folder/{user_id}")
 @token_auth()
-def get_user_folders(user_id: str, db: Session = Depends(get_db)):
+async def get_user_folders(request: Request, user_id: str, db: Session = Depends(get_db)):
+    
+    logger.debug(f"get user folders for user: {user_id}")
+    query = """
+        SELECT * FROM note_folder WHERE user_id = :user_id
+    """
 
-    return
+    res = db.execute(text(query), {"user_id": user_id}).all()
+
+    logger.debug(f"get user folders res: {res}")
+
+    validated_folders = [NoteFolder.model_validate(folder) for folder in res]
+    logger.debug(f"get user folders validated_folders: {validated_folders}")
+
+
+    logger.debug(f"get user folders res DICT: {rows2dict(res)}")
+
+
+    return rows2dict(res)
 
 
 # Note endpoints
