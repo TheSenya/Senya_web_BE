@@ -18,6 +18,8 @@ from app.core.auth import token_auth
 from app.config.logger import logger
 from app.core.helper import row2dict, rows2dict
 from fastapi import Request
+import uuid
+
 router = APIRouter(prefix="/note", tags=["notes"])
 
 
@@ -51,13 +53,38 @@ def create_default_folder(db, username, user_id) -> NoteFolder:
 
 
 # Note Folder endpoints
-@router.post("/folder", response_model=NoteFolderCreate)
+@router.post("/folder")
 @token_auth()
-def create_note_folder(folder: NoteFolderCreate, db: Session = Depends(get_db)):
-
-    return
+def create_note_folder(folder_name: str, user_id: str, parent_id: int | None = None, db: Session = Depends(get_db)):
 
 
+    logger.debug(f"create note folder {folder_name} for user: {user_id} with parent_id: {parent_id}")
+    # check if parent folder exists
+    query = """
+        SELECT * FROM note_folder WHERE id = :parent_id
+    """
+    res = db.execute(text(query), {"parent_id": parent_id}).one()
+
+    logger.debug(f"create note folder res: {res}")
+
+    if res is None:
+        raise HTTPException(status_code=404, detail="Parent folder not found")
+
+    # create new folder
+    query = """
+        INSERT INTO note_folder (user_id, name, parent_id, is_root) 
+        VALUES (:user_id, :name, :parent_id, :is_root)
+        RETURNING id, user_id, name, parent_id, is_root;
+    """
+    res = db.execute(text(query), {"user_id": uuid.UUID(user_id), "name": folder_name, "parent_id": parent_id, "is_root": False}).one()
+
+    logger.debug(f"create new folder res: {res}")
+    logger.debug(f"create new folder res DICT: {row2dict(res)}")
+
+    new_folder = row2dict(res)
+
+    return NoteFolder(id=new_folder["id"], user_id=new_folder["user_id"], name=new_folder["name"], parent_id=new_folder["parent_id"], is_root=new_folder["is_root"])
+    
 @router.put("/folder", response_model=NoteFolderEdit)
 def update_note_folder(folder: NoteFolderEdit, db: Session = Depends(get_db)):
     return
