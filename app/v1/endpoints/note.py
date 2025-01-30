@@ -57,7 +57,6 @@ def create_default_folder(db, username, user_id) -> NoteFolder:
 @token_auth()
 def create_note_folder(folder_name: str, user_id: str, parent_id: int | None = None, db: Session = Depends(get_db)):
 
-
     logger.debug(f"create note folder {folder_name} for user: {user_id} with parent_id: {parent_id}")
     # check if parent folder exists
     query = """
