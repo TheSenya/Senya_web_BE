@@ -94,6 +94,7 @@ def delete_note_folder(folder: NoteFolderDelete, db: Session = Depends(get_db)):
     return
 
 
+
 @router.get("/folder/{user_id}")
 @token_auth()
 async def get_user_folders(request: Request, user_id: str, db: Session = Depends(get_db)):
