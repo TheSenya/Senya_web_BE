@@ -87,7 +87,7 @@ def create_note_folder(folder_name: str, user_id: str, parent_id: int | None = N
 @router.put("/folder", response_model=NoteFolderEdit)
 def update_note_folder(folder: NoteFolderEdit, db: Session = Depends(get_db)):
     return
-
+ 
 
 @router.delete("/folder")
 def delete_note_folder(folder: NoteFolderDelete, db: Session = Depends(get_db)):
