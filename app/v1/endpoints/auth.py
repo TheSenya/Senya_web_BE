@@ -130,11 +130,20 @@ async def login(login_data: LoginRequest, db: Session = Depends(get_db)):
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=True,
-        samesite="lax",
+        secure=False,
+        samesite="none",
         max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
         path="/",
     )
+
+    #test refresh_token iossue
+    # response.set_cookie(
+    #     key="refresh_token",
+    #     value=refresh_token,
+    #     httponly=False,  # Temporary
+    #     secure=False,
+    #     samesite="none"
+    # )
 
     return response
 
@@ -228,7 +237,7 @@ async def logout(db: Session = Depends(get_db)):
     response.delete_cookie(
         key="refresh_token",
         httponly=True,
-        secure=True,
+        secure=False,
         samesite="lax",
         path="/",
     )
@@ -254,3 +263,6 @@ async def refresh_token(
     new_access_token = await refresh_access_token(refresh_token)
     return {"access_token": new_access_token}
 
+@router.get("/debug/cookies")
+async def debug_cookies(request: Request):
+    return {"cookies": dict(request.cookies)}

@@ -17,13 +17,11 @@ class Settings(BaseSettings):
     DATABASE_HOST: str
     DATABASE_PORT: int
 
-    FRONTEND_URL: str = "http://localhost:5173"
-    CORS_ORIGINS: list = [
-        "http://localhost:5173",
-        "http://localhost:8000",
-        "http://senya.ca",
-        # Add other allowed origins as needed
-    ]
+    FRONTEND_URL: str 
+    CORS_ORIGINS: list 
+
+    COOKIE_SAMESITE: str
+    COOKIE_SECURE: bool
 
     class Config:
         env_file = ".env"

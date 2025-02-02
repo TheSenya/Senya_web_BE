@@ -136,8 +136,14 @@ def token_auth():
             access_token = None
             refresh_token = request.cookies.get("refresh_token")
             auth_header = request.headers.get("Authorization")
+
+            logger.debug(f'--------------------')
+            logger.debug(f'request.cookies: {request.cookies}')
+            logger.debug(f'--------------------')
             
+            logger.debug(f'--------------------')
             logger.debug(f'token_auth auth_header: {auth_header} refresh: {refresh_token}')
+            logger.debug(f'--------------------')
 
             # Get access token from header
             if auth_header and auth_header.startswith("Bearer "):
