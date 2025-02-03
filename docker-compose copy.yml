@@ -1,7 +1,6 @@
 services:
   # FastAPI backend service
   backend:
-    # Build configuration for the container
     build: .
     # Set a custom container name instead of auto-generated one
     container_name: senya_backend
@@ -9,7 +8,7 @@ services:
     # This enables hot-reloading and direct code editing
     volumes:
       - .:/app
-      - ./cert:/cert:ro
+      - ./certs:/certs:ro
     # Access the API on localhost:8000
     ports:
       - "443:443"

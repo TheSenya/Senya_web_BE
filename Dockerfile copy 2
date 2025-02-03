@@ -51,7 +51,7 @@ EXPOSE 443
 # old command to run app on http
 # CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "443", "--reload", "--log-level", "debug"]\
 # Command to run the application on https
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "443", "--reload", "--log-level", "debug","--ssl-keyfile", "./cert/localhost+1-key.pem", "--ssl-certfile", "./cert/localhost+1.pem"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "443", "--reload", "--log-level", "debug","--ssl-keyfile", "/cert/localhost+1-key.pem", "--ssl-certfile", "/cert/localhost+1.pem"]
 
 # ^ This command runs the FastAPI application using Uvicorn ASGI server
 #   - "main:app" specifies the Python module containing the FastAPI app and the app object to use

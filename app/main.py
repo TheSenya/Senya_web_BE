@@ -13,6 +13,14 @@ logger.info("Starting application...")
 
 app = FastAPI(title=settings.APP_NAME, debug=settings.DEBUG, openapi_url=f"{settings.API_V1_STR}/openapi.json")
 
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=['https://localhost:3000'],
+#     allow_credentials=True,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,

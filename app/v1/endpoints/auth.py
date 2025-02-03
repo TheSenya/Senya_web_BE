@@ -236,9 +236,9 @@ async def logout(db: Session = Depends(get_db)):
     # Clear the refresh token cookie
     response.delete_cookie(
         key="refresh_token",
-        httponly=True,
-        secure=False,
-        samesite="lax",
+        httponly=False,
+        secure=True,
+        samesite="none",
         path="/",
     )
 
@@ -274,8 +274,8 @@ async def debug_set_cookie(request: Request):
     response.set_cookie(
         key="refresh_token",
         value="test_value",
-        httponly=True,
-        secure=False,
+        httponly=False,
+        secure=True,
         samesite="none",
         max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
         path="/",
