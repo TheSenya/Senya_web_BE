@@ -263,6 +263,23 @@ async def refresh_token(
     new_access_token = await refresh_access_token(refresh_token)
     return {"access_token": new_access_token}
 
-@router.get("/debug/cookies")
-async def debug_cookies(request: Request):
+@router.get("/debug/get_cookies")
+async def debug_get_cookies(request: Request):
+    logger.debug(f"request.cookies: {request.cookies}")
     return {"cookies": dict(request.cookies)}
+
+@router.get("/debug/set_cookie")
+async def debug_set_cookie(request: Request):
+    response = JSONResponse(content={"message": "Set cookie successful"})
+    response.set_cookie(
+        key="refresh_token",
+        value="test_value",
+        httponly=True,
+        secure=False,
+        samesite="none",
+        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+        path="/",
+    )
+    
+    logger.debug(f"response: {response}")
+    return response
