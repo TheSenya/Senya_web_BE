@@ -129,21 +129,12 @@ async def login(login_data: LoginRequest, db: Session = Depends(get_db)):
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
-        httponly=True,
-        secure=False,
+        httponly=False,
+        secure=True,
         samesite="none",
         max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
         path="/",
     )
-
-    #test refresh_token iossue
-    # response.set_cookie(
-    #     key="refresh_token",
-    #     value=refresh_token,
-    #     httponly=False,  # Temporary
-    #     secure=False,
-    #     samesite="none"
-    # )
 
     return response
 
@@ -241,7 +232,7 @@ async def logout(db: Session = Depends(get_db)):
         samesite="none",
         path="/",
     )
-
+    
     return response
 
 

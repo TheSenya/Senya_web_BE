@@ -24,9 +24,9 @@ class Note(BaseModel):
         from_attributes = True 
 
 class NoteFolderCreate(BaseModel):
-    user_id: str
     name: str
-    parent_id: int
+    user_id: str
+    parent_id: int | None = None
 
 class NoteFolderEdit(BaseModel):
     id: int

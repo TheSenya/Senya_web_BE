@@ -55,14 +55,14 @@ def create_default_folder(db, username, user_id) -> NoteFolder:
 # Note Folder endpoints
 @router.post("/folder")
 @token_auth()
-def create_note_folder(folder_name: str, user_id: str, parent_id: int | None = None, db: Session = Depends(get_db)):
+async def create_note_folder(request: Request, folder: NoteFolderCreate, db: Session = Depends(get_db)):
 
-    logger.debug(f"create note folder {folder_name} for user: {user_id} with parent_id: {parent_id}")
+    logger.debug(f"create note folder {folder.name} for user: {folder.user_id} with parent_id: {folder.parent_id}")
     # check if parent folder exists
     query = """
         SELECT * FROM note_folder WHERE id = :parent_id
     """
-    res = db.execute(text(query), {"parent_id": parent_id}).one()
+    res = db.execute(text(query), {"parent_id": folder.parent_id}).one()
 
     logger.debug(f"create note folder res: {res}")
 
@@ -75,7 +75,7 @@ def create_note_folder(folder_name: str, user_id: str, parent_id: int | None = N
         VALUES (:user_id, :name, :parent_id, :is_root)
         RETURNING id, user_id, name, parent_id, is_root;
     """
-    res = db.execute(text(query), {"user_id": uuid.UUID(user_id), "name": folder_name, "parent_id": parent_id, "is_root": False}).one()
+    res = db.execute(text(query), {"user_id": uuid.UUID(folder.user_id), "name": folder.name, "parent_id": folder.parent_id, "is_root": False}).one()
 
     logger.debug(f"create new folder res: {res}")
     logger.debug(f"create new folder res DICT: {row2dict(res)}")
@@ -85,12 +85,14 @@ def create_note_folder(folder_name: str, user_id: str, parent_id: int | None = N
     return NoteFolder(id=new_folder["id"], user_id=new_folder["user_id"], name=new_folder["name"], parent_id=new_folder["parent_id"], is_root=new_folder["is_root"])
     
 @router.put("/folder", response_model=NoteFolderEdit)
-def update_note_folder(folder: NoteFolderEdit, db: Session = Depends(get_db)):
+@token_auth()
+async def update_note_folder(request: Request, folder: NoteFolderEdit, db: Session = Depends(get_db)):
     return
  
 
 @router.delete("/folder")
-def delete_note_folder(folder: NoteFolderDelete, db: Session = Depends(get_db)):
+@token_auth()
+async def delete_note_folder(request: Request, folder: NoteFolderDelete, db: Session = Depends(get_db)):
     return
 
 
