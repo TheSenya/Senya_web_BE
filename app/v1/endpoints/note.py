@@ -57,17 +57,29 @@ def create_default_folder(db, username, user_id) -> NoteFolder:
 @token_auth()
 async def create_note_folder(request: Request, folder: NoteFolderCreate, db: Session = Depends(get_db)):
 
-    logger.debug(f"create note folder {folder.name} for user: {folder.user_id} with parent_id: {folder.parent_id}")
-    # check if parent folder exists
-    query = """
-        SELECT * FROM note_folder WHERE id = :parent_id
-    """
-    res = db.execute(text(query), {"parent_id": folder.parent_id}).one()
+    # request.state.user is set in the token_auth decorator
+    # request.state.user = {
+    #     "username": username,
+    #     "user_id": user_id
+    # }
 
-    logger.debug(f"create note folder res: {res}")
+    # get user id from request state
+    user_id = request.state.get("user",{}).get('user_id')
+    logger.debug(f'user_id: {user_id}')
 
-    if res is None:
-        raise HTTPException(status_code=404, detail="Parent folder not found")
+    # check if user id is valid
+    if user_id is None:
+        raise HTTPException(status_code=401, detail="User not found")
+    
+    # check if user_id matches the user_id of the parent folder
+    if folder.parent_id is not None:
+        query = """
+            SELECT * FROM note_folder WHERE id = :parent_id AND user_id = :user_id
+        """
+        res = db.execute(text(query), {"parent_id": folder.parent_id, "user_id": user_id}).one()
+        
+        if res is None:
+            raise HTTPException(status_code=404, detail="Parent folder not found")
 
     # create new folder
     query = """
@@ -77,7 +89,6 @@ async def create_note_folder(request: Request, folder: NoteFolderCreate, db: Ses
     """
     res = db.execute(text(query), {"user_id": uuid.UUID(folder.user_id), "name": folder.name, "parent_id": folder.parent_id, "is_root": False}).one()
 
-    logger.debug(f"create new folder res: {res}")
     logger.debug(f"create new folder res DICT: {row2dict(res)}")
 
     new_folder = row2dict(res)
@@ -87,6 +98,45 @@ async def create_note_folder(request: Request, folder: NoteFolderCreate, db: Ses
 @router.put("/folder", response_model=NoteFolderEdit)
 @token_auth()
 async def update_note_folder(request: Request, folder: NoteFolderEdit, db: Session = Depends(get_db)):
+
+    # get user id from request state
+    user_id = request.state.get("user",{}).get('user_id')
+    logger.debug(f'user_id: {user_id}')
+
+    # check if user id is valid
+    if user_id is None:
+        raise HTTPException(status_code=401, detail="User not found")
+    
+    # check if user_id matches the user_id for the folder to be updated
+    if user_id != folder.user_id:
+        raise HTTPException(status_code=401, detail="User does not have access to this folder")
+    
+    # check if user_id matches the user_id of the folder owner and if the folder exists
+    if folder.id is not None:
+        query = """
+            SELECT * FROM note_folder WHERE id = :id  AND user_id = :user_id
+        """
+        res = db.execute(text(query), {"id": folder.id, "user_id": uuid.UUID(user_id)}).one()
+        
+        if res is None:
+            raise HTTPException(status_code=404, detail="Folder not found")
+        
+    # check if parent_id is valid
+    if folder.parent_id is not None:
+        query = """
+            SELECT * FROM note_folder WHERE id = :parent_id AND user_id = :user_id
+        """
+        res = db.execute(text(query), {"parent_id": folder.parent_id, "user_id": uuid.UUID(user_id)}).one()
+        
+        if res is None:
+            raise HTTPException(status_code=404, detail="Parent folder not found")  
+
+    # update folder
+    query = """
+        UPDATE note_folder SET name = :name, parent_id = :parent_id WHERE id = :id AND user_id = :user_id
+    """
+    res = db.execute(text(query), {"id": folder.id, "user_id": uuid.UUID(user_id), "name": folder.name, "parent_id": folder.parent_id})
+
     return
  
 

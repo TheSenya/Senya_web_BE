@@ -137,14 +137,6 @@ def token_auth():
             refresh_token = request.cookies.get("refresh_token")
             auth_header = request.headers.get("Authorization")
 
-            logger.debug(f'--------------------')
-            logger.debug(f'request.cookies: {request.cookies}')
-            logger.debug(f'--------------------')
-            
-            logger.debug(f'--------------------')
-            logger.debug(f'token_auth auth_header: {auth_header} refresh: {refresh_token}')
-            logger.debug(f'--------------------')
-
             # Get access token from header
             if auth_header and auth_header.startswith("Bearer "):
                 access_token = auth_header.split(" ")[1]
@@ -173,11 +165,21 @@ def token_auth():
                     # check if refresh token exists
                     if not refresh_token:
                         raise HTTPException(401, "No valid tokens provided") #TODO prompt a logout
-                    logger.debug(f'4')
+
                     # Validate refresh token and get new access token
                     new_access_token = await refresh_access_token(refresh_token)
 
                     kwargs["new_access_token"] = new_access_token  # Pass to endpoint
+
+                    # validate acccess token 
+                    payload = jwt.decode(
+                        new_access_token,
+                        settings.SECRET_KEY,
+                        algorithms=[settings.ALGORITHM]
+                    )
+
+                    username = payload.get("name")
+                    user_id = payload.get("sub")
 
             except ExpiredSignatureError:
                 # refresh token should be used to generate new access token in this case
@@ -199,18 +201,21 @@ def token_auth():
             if 'request' in func.__code__.co_varnames:
                 kwargs['request'] = request
 
+            request.state.user = {
+                "username": username,
+                "user_id": user_id
+            }
+
             # Execute endpoint
             response = await func(*args, **kwargs)
             
             # Attach new access token to response (if generated)
             if "new_access_token" in kwargs:
                 if isinstance(response, JSONResponse):
-                    logger.debug(f'2')
                     response_data = json.loads(bytes(response.body).decode())
                     response_data["new_access_token"] = kwargs["new_access_token"]
                     return JSONResponse(content=response_data)
             
-            logger.debug(f'3')
             return response
 
         return wrapper
