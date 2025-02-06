@@ -108,11 +108,11 @@ async def login(login_data: LoginRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Incorrect username or password")
 
     access_token = create_access_token(
-        data={"sub": str(res_dict.get("id")), "name": res_dict.get("email"), "iat": datetime.now()}
+        data={"sub": str(res_dict.get("id"))}
     )
 
     refresh_token = create_refresh_token(
-        data={"sub": str(res_dict.get("id")), "name": res_dict.get("email"), "iat": datetime.now()}
+        data={"sub": str(res_dict.get("id"))}
     )
 
     # Create response
@@ -196,9 +196,7 @@ async def register(register_data: RegisterRequest, db: Session = Depends(get_db)
         # create access token
         access_token = create_access_token(
             data={
-                "sub": str(user_id),
-                "name": register_data.email,
-                "iat": datetime.now(),
+                "sub": str(user_id)
             }
         )
 

@@ -20,6 +20,9 @@ def get_db():
     try:
         # Yield session to caller
         yield db
+        db.commit()  # Auto-commit after request
+    except Exception:
+        db.rollback()  # Rollback on error
+        raise
     finally:
-        # Ensure session is closed after use
-        db.close() 
+        db.close()

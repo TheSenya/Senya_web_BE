@@ -20,6 +20,8 @@ from app.core.helper import row2dict, rows2dict
 from fastapi import Request
 import uuid
 
+from app.core.auth import get_current_user
+
 router = APIRouter(prefix="/note", tags=["notes"])
 
 
@@ -52,20 +54,50 @@ def create_default_folder(db, username, user_id) -> NoteFolder:
     return NoteFolder(id=new_folder["id"], user_id=new_folder["user_id"], name=new_folder["name"], parent_id=new_folder["parent_id"], is_root=new_folder["is_root"])
 
 
+@router.get("/folder")
+@token_auth()
+async def get_user_folders(request: Request, db: Session = Depends(get_db)):
+
+    user = get_current_user(request, db)
+
+    if user is None:
+        raise HTTPException(status_code=401, detail="User not found")
+    
+    user_id = user.id
+    
+    logger.debug(f"get user folders for user: {user_id}")
+
+    query = """
+        SELECT * FROM note_folder WHERE user_id = :user_id
+    """
+    res = db.execute(text(query), {"user_id": user_id}).all()
+
+    logger.debug(f"get user folders res: {res}")
+
+    validated_folders = [NoteFolder.model_validate(folder) for folder in res]
+    logger.debug(f"get user folders validated_folders: {validated_folders}")
+
+
+    logger.debug(f"get user folders res DICT: {rows2dict(res)}")
+
+
+    return rows2dict(res)
+
+
 # Note Folder endpoints
 @router.post("/folder")
 @token_auth()
 async def create_note_folder(request: Request, folder: NoteFolderCreate, db: Session = Depends(get_db)):
 
-    # request.state.user is set in the token_auth decorator
-    # request.state.user = {
-    #     "username": username,
-    #     "user_id": user_id
-    # }
-
     # get user id from request state
-    user_id = request.state.get("user",{}).get('user_id')
+    logger.debug(f'request.state.user: {request.state.user}')
+    user_id = request.state.user.get('id')
+
     logger.debug(f'user_id: {user_id}')
+
+    #check if authenticated user id matches user id of the folder to be created
+    if user_id != folder.user_id:
+        raise HTTPException(status_code=401, detail="User does not have access to this folder")
 
     # check if user id is valid
     if user_id is None:
@@ -87,7 +119,8 @@ async def create_note_folder(request: Request, folder: NoteFolderCreate, db: Ses
         VALUES (:user_id, :name, :parent_id, :is_root)
         RETURNING id, user_id, name, parent_id, is_root;
     """
-    res = db.execute(text(query), {"user_id": uuid.UUID(folder.user_id), "name": folder.name, "parent_id": folder.parent_id, "is_root": False}).one()
+    
+    res = db.execute(text(query), {"user_id": user_id, "name": folder.name, "parent_id": folder.parent_id, "is_root": False}).one()
 
     logger.debug(f"create new folder res DICT: {row2dict(res)}")
 
@@ -95,12 +128,12 @@ async def create_note_folder(request: Request, folder: NoteFolderCreate, db: Ses
 
     return NoteFolder(id=new_folder["id"], user_id=new_folder["user_id"], name=new_folder["name"], parent_id=new_folder["parent_id"], is_root=new_folder["is_root"])
     
-@router.put("/folder", response_model=NoteFolderEdit)
+@router.put("/folder/{folder_id}", response_model=NoteFolderEdit)
 @token_auth()
 async def update_note_folder(request: Request, folder: NoteFolderEdit, db: Session = Depends(get_db)):
 
     # get user id from request state
-    user_id = request.state.get("user",{}).get('user_id')
+    user_id = request.state.user.get('id')
     logger.debug(f'user_id: {user_id}')
 
     # check if user id is valid
@@ -140,34 +173,31 @@ async def update_note_folder(request: Request, folder: NoteFolderEdit, db: Sessi
     return
  
 
-@router.delete("/folder")
+@router.delete("/folder/{folder_id}/{user_id}")
 @token_auth()
-async def delete_note_folder(request: Request, folder: NoteFolderDelete, db: Session = Depends(get_db)):
-    return
+async def delete_note_folder(request: Request, folder_id: int, user_id: str, db: Session = Depends(get_db)):
 
-
-
-@router.get("/folder/{user_id}")
-@token_auth()
-async def get_user_folders(request: Request, user_id: str, db: Session = Depends(get_db)):
+    # check if user_id of folder matches the current user's user_id
+    if user_id != request.state.user.get('id'):   
+        raise HTTPException(status_code=401, detail="User does not have access to this folder")
     
-    logger.debug(f"get user folders for user: {user_id}")
+    # check if folder exists
+    if folder_id is not None:   
+        query = """
+            SELECT * FROM note_folder WHERE id = :id AND user_id = :user_id
+        """
+        res = db.execute(text(query), {"id": folder_id, "user_id": uuid.UUID(user_id)}).one()   
+        
+        if res is None:
+            raise HTTPException(status_code=404, detail="Folder not found")
+        
+    # delete folder
     query = """
-        SELECT * FROM note_folder WHERE user_id = :user_id
+        DELETE FROM note_folder WHERE id = :id AND user_id = :user_id
     """
+    db.execute(text(query), {"id": folder_id, "user_id": uuid.UUID(user_id)})
 
-    res = db.execute(text(query), {"user_id": user_id}).all()
-
-    logger.debug(f"get user folders res: {res}")
-
-    validated_folders = [NoteFolder.model_validate(folder) for folder in res]
-    logger.debug(f"get user folders validated_folders: {validated_folders}")
-
-
-    logger.debug(f"get user folders res DICT: {rows2dict(res)}")
-
-
-    return rows2dict(res)
+    return {"message": "Folder deleted successfully"}
 
 
 # Note endpoints
