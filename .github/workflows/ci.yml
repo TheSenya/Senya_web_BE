@@ -16,6 +16,23 @@ jobs:
     name: Build, Test, and Validate Docker Compose Setup
     runs-on: ubuntu-latest
 
+    runs-on: ubuntu-latest
+    # Use services to run a PostgreSQL container
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U ${{ secrets.POSTGRES_USER }} -d ${{ secrets.POSTGRES_DB }}"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
     env:
       # App settings
       DEBUG: ${{ secrets.DEBUG }}
@@ -66,17 +83,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # 6. Display Docker version to ensure Docker is available on the runner.
-      - name: Check Docker version
-        run: docker --version
-
-      # 7. Build Docker images as defined in the docker-compose file.
-      - name: Build Docker images using docker-compose
-        run: docker compose build
-
-      # 8. Start Docker Compose services in detached mode.
-      - name: Start Docker Compose services
-        run: docker compose up -d
+      - name: Build and run Docker Compose services
+        run: |
+          # Build images and start containers in detached mode
+          docker compose up --build -d
+          # Wait until PostgreSQL is healthy
+          echo "Waiting for PostgreSQL to become healthy..."
+          sleep 15
+        # This step uses docker-compose to build your images (from the Dockerfile) and start both the 'db' and 'web' services.
+        # The sleep command is a simple way to wait for the services to be ready.
 
       # 9. Run tests using pytest. The tests use our custom setup (see conftest.py).
       - name: Run tests with pytest

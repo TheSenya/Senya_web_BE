@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str
     POSTGRES_DB: str
     DATABASE_HOST: str
-    DATABASE_PORT: int | str
+    DATABASE_PORT: str
 
     FRONTEND_URL: str 
     CORS_ORIGINS: str | list[str]
@@ -43,7 +43,7 @@ class Settings(BaseSettings):
             return bool(v.lower())
         return v
 
-    @field_validator("ACCESS_TOKEN_EXPIRE_MINUTES", "DATABASE_PORT", mode="before")
+    @field_validator("ACCESS_TOKEN_EXPIRE_MINUTES", mode="before")
     def parse_int(cls, v):
         if isinstance(v, str):
             return int(v)
