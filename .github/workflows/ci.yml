@@ -16,7 +16,6 @@ jobs:
     name: Build, Test, and Validate Docker Compose Setup
     runs-on: ubuntu-latest
 
-    runs-on: ubuntu-latest
     # Use services to run a PostgreSQL container
     services:
       postgres:
