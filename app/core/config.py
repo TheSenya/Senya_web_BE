@@ -43,8 +43,8 @@ class Settings(BaseSettings):
             return bool(v.lower())
         return v
 
-    @field_validator("ACCESS_TOKEN_EXPIRE_MINUTES", mode="before")
-    def parse_access_token_expire_minutes(cls, v):
+    @field_validator("ACCESS_TOKEN_EXPIRE_MINUTES", "DATABASE_PORT", mode="before")
+    def parse_int(cls, v):
         if isinstance(v, str):
             return int(v)
         return v
