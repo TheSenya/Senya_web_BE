@@ -72,7 +72,7 @@ jobs:
           docker compose up --build -d
           # Wait until PostgreSQL is healthy
           echo "Waiting for PostgreSQL to become healthy..."
-          sleep 15
+          sleep 5
         # This step uses docker-compose to build your images (from the Dockerfile) and start both the 'db' and 'web' services.
         # The sleep command is a simple way to wait for the services to be ready.
 
