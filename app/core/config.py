@@ -1,14 +1,13 @@
 from pydantic_settings import BaseSettings
-from typing import Optional
 from functools import lru_cache
 from pydantic import field_validator
 
 class Settings(BaseSettings):
     APP_NAME: str = "Senya Web Backend"
-    DEBUG: bool | str = "false"
+    DEBUG: bool | str = False
     API_V1_STR: str = "/api/v1"
     SECRET_KEY: str
-    ACCESS_TOKEN_EXPIRE_MINUTES: int | str = "30"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int | str = 30
     ALGORITHM: str = "HS256"  # Adding this for JWT encoding
 
     # Database settings
