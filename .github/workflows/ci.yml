@@ -29,8 +29,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
-        working-directory: backend
+          python-version: '3.11'
 
       # 4. Cache pip dependencies to speed up subsequent builds.
       - name: Cache pip dependencies
