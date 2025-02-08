@@ -1,6 +1,7 @@
 from pydantic_settings import BaseSettings
 from typing import Optional
 from functools import lru_cache
+from pydantic import field_validator
 
 class Settings(BaseSettings):
     APP_NAME: str = "Senya Web Backend"
@@ -19,13 +20,23 @@ class Settings(BaseSettings):
     DATABASE_PORT: int
 
     FRONTEND_URL: str 
-    CORS_ORIGINS: list 
+    CORS_ORIGINS: list[str] = []
 
     COOKIE_SAMESITE: str
     COOKIE_SECURE: bool
 
     class Config:
         env_file = ".env"
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    def assemble_cors_origins(cls, v):
+        # If a string is provided, split it by comma
+        if isinstance(v, str):
+            return [origin.strip() for origin in v.split(",") if origin.strip()]
+        # Otherwise, assume it’s already a list (e.g. provided as JSON)
+        if isinstance(v, list):
+            return v
+        raise ValueError("Invalid CORS_ORIGINS format")
 
 @lru_cache
 def get_settings():
@@ -35,7 +46,7 @@ def get_settings():
     """
     return Settings() # type: ignore
 
-settings = get_settings() 
+settings = get_settings()
 
 # Export these for easier imports elsewhere
 SECRET_KEY = settings.SECRET_KEY
