@@ -78,7 +78,7 @@ jobs:
 
       # 9. Run tests using pytest. The tests use our custom setup (see conftest.py).
       - name: Run tests with pytest
-        run: pytest --maxfail=1 --disable-warnings -q
+        run: docker compose exec backend pytest --maxfail=1 --disable-warnings -q
 
       # 10. Tear down Docker Compose services after tests (runs regardless of previous step results).
       - name: Tear down Docker Compose services
