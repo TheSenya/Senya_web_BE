@@ -16,6 +16,26 @@ jobs:
     name: Build, Test, and Validate Docker Compose Setup
     runs-on: ubuntu-latest
 
+    env:
+      # App settings
+      DEBUG: ${{ secrets.DEBUG }}
+      SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      ACCESS_TOKEN_EXPIRE_MINUTES: 30
+      
+      # Database settings
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+      DATABASE_HOST: ${{ secrets.DATABASE_HOST }}
+      DATABASE_PORT: ${{ secrets.DATABASE_PORT }}
+      
+      # CORS and security settings
+      FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
+      CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
+      COOKIE_SAMESITE: ${{ secrets.COOKIE_SAMESITE }}
+      COOKIE_SECURE: ${{ secrets.COOKIE_SECURE }}
+
     steps:
       # 1. Checkout the repository code.
       - name: Checkout repository
