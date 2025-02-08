@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     DATABASE_PORT: int
 
     FRONTEND_URL: str 
-    CORS_ORIGINS: list[str] = []
+    CORS_ORIGINS: str | list[str]
 
     COOKIE_SAMESITE: str
     COOKIE_SECURE: bool
