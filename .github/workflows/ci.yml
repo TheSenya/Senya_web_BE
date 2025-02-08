@@ -51,6 +51,9 @@ jobs:
           echo "CORS_ORIGINS: $CORS_ORIGINS"
           echo "SECRET_KEY length: ${#SECRET_KEY} chars"
           echo "POSTGRES_PASSWORD length: ${#POSTGRES_PASSWORD} chars"
+
+      - name: Raw Env Dump (Temporary)
+        run: printenv
       
       # 2. (Optional) Display a message; our next steps will run in the "backend" directory.
       - name: Change working directory to backend
