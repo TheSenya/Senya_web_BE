@@ -28,7 +28,7 @@ jobs:
       POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
       POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
       DATABASE_HOST: ${{ secrets.DATABASE_HOST }}
-      DATABASE_PORT: ${{ secrets.DATABASE_PORT }}
+      DATABASE_PORT: ${{ secrets.DATABASE_PORT || '5432' }}
       
       # CORS and security settings
       FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
@@ -40,6 +40,17 @@ jobs:
       # 1. Checkout the repository code.
       - name: Checkout repository
         uses: actions/checkout@v3
+
+      - name: Debug Configuration
+        run: |
+          echo "--- Configuration Check ---"
+          echo "DEBUG: $DEBUG"
+          echo "DATABASE_HOST: $DATABASE_HOST"
+          echo "DATABASE_PORT: $DATABASE_PORT"
+          echo "POSTGRES_DB: $POSTGRES_DB"
+          echo "CORS_ORIGINS: $CORS_ORIGINS"
+          echo "SECRET_KEY length: ${#SECRET_KEY} chars"
+          echo "POSTGRES_PASSWORD length: ${#POSTGRES_PASSWORD} chars"
       
       # 2. (Optional) Display a message; our next steps will run in the "backend" directory.
       - name: Change working directory to backend
@@ -84,3 +95,35 @@ jobs:
       - name: Tear down Docker Compose services
         if: always()
         run: docker compose down
+
+      - name: Verify Environment Variables
+        run: |
+          echo "Checking environment variables:"
+          # Check presence without revealing values
+          required_vars=(
+            "SECRET_KEY" "POSTGRES_USER"
+            "POSTGRES_PASSWORD" "POSTGRES_DB"
+            "DATABASE_HOST"
+          )
+          
+          for var in "${required_vars[@]}"; do
+            if [ -z "${!var}" ]; then
+              echo "❌ Missing $var"
+              exit 1
+            else
+              echo "✅ $var is set (length: ${#var} chars)"
+            fi
+          done
+          
+          echo "DATABASE_PORT: ${DATABASE_PORT:-5432} (using fallback if empty)"
+
+      - name: Debug Configuration
+        run: |
+          echo "--- Configuration Check ---"
+          echo "DEBUG: $DEBUG"
+          echo "DATABASE_HOST: $DATABASE_HOST"
+          echo "DATABASE_PORT: $DATABASE_PORT"
+          echo "POSTGRES_DB: $POSTGRES_DB"
+          echo "CORS_ORIGINS: $CORS_ORIGINS"
+          echo "SECRET_KEY length: ${#SECRET_KEY} chars"
+          echo "POSTGRES_PASSWORD length: ${#POSTGRES_PASSWORD} chars"
