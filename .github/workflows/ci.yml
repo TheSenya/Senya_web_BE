@@ -69,7 +69,7 @@ jobs:
       - name: Build and run Docker Compose services
         run: |
           # Build images and start containers in detached mode
-          docker compose up --build -d
+          docker compose up --build
           # Wait until PostgreSQL is healthy
           echo "Waiting for PostgreSQL to become healthy..."
           sleep 5
