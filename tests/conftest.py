@@ -17,6 +17,9 @@ from app.models.login import LoginAttempts
 from app.models.workout import Workouts
 from app.models.notes import Note, NoteFolder
 
+from app.core.config import settings
+
+
 
 # ------------------------------------------------------------------------------
 # Fixture: Start PostgreSQL Container for Tests
