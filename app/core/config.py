@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
 from typing import Optional
+from functools import lru_cache
 
 class Settings(BaseSettings):
     APP_NAME: str = "Senya Web Backend"
@@ -21,11 +22,20 @@ class Settings(BaseSettings):
     CORS_ORIGINS: list 
 
     COOKIE_SAMESITE: str
+    COOKIE_SECURE: bool
 
     class Config:
         env_file = ".env"
 
-settings = Settings()
+@lru_cache
+def get_settings():
+    """
+    Caches and returns an instance of Settings.
+    This is useful for dependency injection in frameworks like FastAPI.
+    """
+    return Settings() # type: ignore
+
+settings = get_settings() 
 
 # Export these for easier imports elsewhere
 SECRET_KEY = settings.SECRET_KEY

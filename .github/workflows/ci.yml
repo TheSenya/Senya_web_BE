@@ -1,0 +1,75 @@
+name: CI Pipeline
+
+# Trigger the workflow on push and pull requests to dev and main branches.
+on:
+  push:
+    branches:
+      - dev
+      - main
+  pull_request:
+    branches:
+      - dev
+      - main
+
+jobs:
+  build-and-test:
+    name: Build, Test, and Validate Docker Compose Setup
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout the repository code.
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      # 2. (Optional) Display a message; our next steps will run in the "backend" directory.
+      - name: Change working directory to backend
+        run: echo "Using 'backend' as working directory"
+
+      # 3. Set up Python – adjust the version if needed.
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+        working-directory: backend
+
+      # 4. Cache pip dependencies to speed up subsequent builds.
+      - name: Cache pip dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+        working-directory: backend
+
+      # 5. Install project dependencies.
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+        working-directory: backend
+
+      # 6. Display Docker version to ensure Docker is available on the runner.
+      - name: Check Docker version
+        run: docker --version
+
+      # 7. Build Docker images as defined in the docker-compose file.
+      - name: Build Docker images using docker-compose
+        run: docker-compose build
+        working-directory: backend
+
+      # 8. Start Docker Compose services in detached mode.
+      - name: Start Docker Compose services
+        run: docker-compose up -d
+        working-directory: backend
+
+      # 9. Run tests using pytest. The tests use our custom setup (see conftest.py).
+      - name: Run tests with pytest
+        run: pytest --maxfail=1 --disable-warnings -q
+        working-directory: backend
+
+      # 10. Tear down Docker Compose services after tests (runs regardless of previous step results).
+      - name: Tear down Docker Compose services
+        if: always()
+        run: docker-compose down
+        working-directory: backend

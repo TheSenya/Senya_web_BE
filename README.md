@@ -110,4 +110,4 @@ docker tag <old name> <new name>
 
 docker compose exec backend alembic revision --autogenerate -m "add notes"
 
-pytest tests/auth.py -v
+docker-compose exec -it backend pytest tests/authx.py -v
