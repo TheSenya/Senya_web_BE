@@ -5,10 +5,10 @@ from pydantic import field_validator
 
 class Settings(BaseSettings):
     APP_NAME: str = "Senya Web Backend"
-    DEBUG: bool
+    DEBUG: bool | str = "false"
     API_V1_STR: str = "/api/v1"
     SECRET_KEY: str
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: int | str = "30"
     ALGORITHM: str = "HS256"  # Adding this for JWT encoding
 
     # Database settings
@@ -17,13 +17,13 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str
     POSTGRES_DB: str
     DATABASE_HOST: str
-    DATABASE_PORT: int
+    DATABASE_PORT: int | str
 
     FRONTEND_URL: str 
     CORS_ORIGINS: str | list[str]
 
     COOKIE_SAMESITE: str
-    COOKIE_SECURE: bool
+    COOKIE_SECURE: bool | str
 
     class Config:
         env_file = ".env"
@@ -37,6 +37,18 @@ class Settings(BaseSettings):
         if isinstance(v, list):
             return v
         raise ValueError("Invalid CORS_ORIGINS format")
+
+    @field_validator("DEBUG", "COOKIE_SECURE", mode="before")
+    def parse_bool(cls, v):
+        if isinstance(v, str):
+            return bool(v.lower())
+        return v
+
+    @field_validator("ACCESS_TOKEN_EXPIRE_MINUTES", mode="before")
+    def parse_access_token_expire_minutes(cls, v):
+        if isinstance(v, str):
+            return int(v)
+        return v
 
 @lru_cache
 def get_settings():
