@@ -16,7 +16,6 @@ jobs:
     name: Build, Test, and Validate Docker Compose Setup
     runs-on: ubuntu-latest
     environment: dev
-
     env:
       # App settings
       DEBUG: ${{ secrets.DEBUG }}
@@ -41,6 +40,71 @@ jobs:
       # 1. Checkout the repository code.
       - name: Checkout repository
         uses: actions/checkout@v3
+      
+      # 2. (Optional) Display a message; our next steps will run in the "backend" directory.
+      - name: Change working directory to backend
+        run: echo "Using 'backend' as working directory"
+
+      # 3. Set up Python – adjust the version if needed.
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      # 4. Cache pip dependencies to speed up subsequent builds.
+      - name: Cache pip dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      # 5. Install project dependencies.
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Build and run Docker Compose services
+        run: |
+          # Build images and start containers in detached mode
+          docker compose up --build
+          # Wait until PostgreSQL is healthy
+          echo "Waiting for PostgreSQL to become healthy..."
+          sleep 5
+        # This step uses docker-compose to build your images (from the Dockerfile) and start both the 'db' and 'web' services.
+        # The sleep command is a simple way to wait for the services to be ready.
+
+      # 9. Run tests using pytest. The tests use our custom setup (see conftest.py).
+      - name: Run tests with pytest
+        run: docker compose exec backend pytest --maxfail=1 --disable-warnings -q
+
+      # 10. Tear down Docker Compose services after tests (runs regardless of previous step results).
+      - name: Tear down Docker Compose services
+        if: always()
+        run: docker compose down
+
+      - name: Verify Environment Variables
+        run: |
+          echo "Checking environment variables:"
+          # Check presence without revealing values
+          required_vars=(
+            "SECRET_KEY" "POSTGRES_USER"
+            "POSTGRES_PASSWORD" "POSTGRES_DB"
+            "DATABASE_HOST"
+          )
+          
+          for var in "${required_vars[@]}"; do
+            if [ -z "${!var}" ]; then
+              echo "❌ Missing $var"
+              exit 1
+            else
+              echo "✅ $var is set (length: ${#var} chars)"
+            fi
+          done
+          
+          echo "DATABASE_PORT: ${DATABASE_PORT:-5432} (using fallback if empty)"
 
       - name: Debug Configuration
         run: |
