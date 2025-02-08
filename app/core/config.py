@@ -21,7 +21,6 @@ class Settings(BaseSettings):
     CORS_ORIGINS: list 
 
     COOKIE_SAMESITE: str
-    COOKIE_SECURE: bool
 
     class Config:
         env_file = ".env"

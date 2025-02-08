@@ -26,6 +26,7 @@ class Note(BaseModel):
     name = Column(String(150), nullable=False)
     folder_id = Column(Integer, ForeignKey("note_folder.id"), nullable=False)
     content = Column(JSONB, nullable=True)
+    format = Column(String(20), nullable=False)
 
     users = relationship("User", back_populates="notes")  # Fixed relationship
-    folders = relationship("NoteFolder", back_populates="notes")  # Fixed relationship name
+    folder = relationship("NoteFolder", back_populates="notes")  # Fixed relationship name

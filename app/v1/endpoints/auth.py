@@ -27,7 +27,7 @@ from app.core.config import settings
 from app.schemas.login import RegisterRequest, RegisterResponse, Token
 from app.schemas.user import User
 
-from app.v1.endpoints.note import create_default_folder
+from app.v1.endpoints.note_folder import create_default_folder
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
@@ -252,23 +252,23 @@ async def refresh_token(
     new_access_token = await refresh_access_token(refresh_token)
     return {"access_token": new_access_token}
 
-@router.get("/debug/get_cookies")
-async def debug_get_cookies(request: Request):
-    logger.debug(f"request.cookies: {request.cookies}")
-    return {"cookies": dict(request.cookies)}
+# @router.get("/debug/get_cookies")
+# async def debug_get_cookies(request: Request):
+#     logger.debug(f"request.cookies: {request.cookies}")
+#     return {"cookies": dict(request.cookies)}
 
-@router.get("/debug/set_cookie")
-async def debug_set_cookie(request: Request):
-    response = JSONResponse(content={"message": "Set cookie successful"})
-    response.set_cookie(
-        key="refresh_token",
-        value="test_value",
-        httponly=False,
-        secure=True,
-        samesite="none",
-        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
-        path="/",
-    )
+# @router.get("/debug/set_cookie")
+# async def debug_set_cookie(request: Request):
+#     response = JSONResponse(content={"message": "Set cookie successful"})
+#     response.set_cookie(
+#         key="refresh_token",
+#         value="test_value",
+#         httponly=False,
+#         secure=True,
+#         samesite="none",
+#         max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+#         path="/",
+#     )
     
-    logger.debug(f"response: {response}")
-    return response
+#     logger.debug(f"response: {response}")
+#     return response

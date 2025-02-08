@@ -17,7 +17,6 @@ from app.core.helper import row2dict
 from app.schemas.user import User
 
 
-
 # get the current user from the request
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> User | None:
     user_id = request.state.user.get('id')
