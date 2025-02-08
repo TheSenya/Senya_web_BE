@@ -52,11 +52,11 @@ jobs:
 
       # 7. Build Docker images as defined in the docker-compose file.
       - name: Build Docker images using docker-compose
-        run: docker-compose build
+        run: docker compose build
 
       # 8. Start Docker Compose services in detached mode.
       - name: Start Docker Compose services
-        run: docker-compose up -d
+        run: docker compose up -d
 
       # 9. Run tests using pytest. The tests use our custom setup (see conftest.py).
       - name: Run tests with pytest
@@ -65,4 +65,4 @@ jobs:
       # 10. Tear down Docker Compose services after tests (runs regardless of previous step results).
       - name: Tear down Docker Compose services
         if: always()
-        run: docker-compose down
+        run: docker compose down
