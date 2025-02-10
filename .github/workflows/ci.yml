@@ -102,9 +102,14 @@ jobs:
           echo "Waiting for services to be ready..."
           sleep 10
 
-      # 9. Run tests using pytest. The tests use our custom setup (see conftest.py).
+      - name: List test files
+        run: |
+          docker compose exec -T backend ls -la /app/tests/
+          docker compose exec -T backend pwd
+
       - name: Run tests with pytest
-        run: docker compose exec -T backend pytest --maxfail=1 --disable-warnings -v
+        run: |
+          docker compose exec -T backend pytest tests/ -v --disable-warnings
 
       # 10. Tear down Docker Compose services after tests (runs regardless of previous step results).
       - name: Tear down Docker Compose services
