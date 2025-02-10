@@ -70,10 +70,18 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Setup SSL certificates
+        run: |
+          mkdir -p backend/cert
+          echo "$SSL_KEY" | base64 -d > backend/cert/key.pem
+          echo "$SSL_CERT" | base64 -d > backend/cert/cert.pem
+          chmod 600 backend/cert/key.pem backend/cert/cert.pem
+          ls -la backend/cert
+
       - name: Build and run Docker Compose services
         run: |
           # Build images and start containers in detached mode
-          docker compose up --build
+          docker compose up --build -d
           # Wait until PostgreSQL is healthy
           echo "Waiting for PostgreSQL to become healthy..."
           sleep 5
