@@ -111,3 +111,10 @@ docker tag <old name> <new name>
 docker compose exec backend alembic revision --autogenerate -m "add notes"
 
 docker-compose exec -it backend pytest tests/authx.py -v
+
+# encode pem files to base64 for github actions secrets
+base64 -i localhost+1-key.pem > key.txt
+base64 -i localhost+1.pem > cert.txt
+
+# make start.sh executable
+chmod +x start.sh

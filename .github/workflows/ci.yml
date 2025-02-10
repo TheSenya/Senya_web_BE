@@ -36,6 +36,10 @@ jobs:
       COOKIE_SAMESITE: ${{ secrets.COOKIE_SAMESITE }}
       COOKIE_SECURE: ${{ secrets.COOKIE_SECURE }}
 
+      # SSL settings
+      SSL_KEY: ${{ secrets.SSL_KEY }}
+      SSL_CERT: ${{ secrets.SSL_CERT }} 
+
     steps:
       # 1. Checkout the repository code.
       - name: Checkout repository
