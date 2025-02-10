@@ -21,14 +21,15 @@ jobs:
       DEBUG: ${{ secrets.DEBUG }}
       SECRET_KEY: ${{ secrets.SECRET_KEY }}
       ACCESS_TOKEN_EXPIRE_MINUTES: 30
+      ALGORITHM: "HS256"
       
       # Database settings
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DATABASE_URL: postgresql://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@${{ secrets.DATABASE_HOST }}:${{ secrets.DATABASE_PORT }}/${{ secrets.POSTGRES_DB }}
       POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
       POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
       POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
       DATABASE_HOST: ${{ secrets.DATABASE_HOST }}
-      DATABASE_PORT: ${{ secrets.DATABASE_PORT || '5432' }}
+      DATABASE_PORT: ${{ secrets.DATABASE_PORT }}
       
       # CORS and security settings
       FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
@@ -38,7 +39,7 @@ jobs:
 
       # SSL settings
       SSL_KEY: ${{ secrets.SSL_KEY }}
-      SSL_CERT: ${{ secrets.SSL_CERT }} 
+      SSL_CERT: ${{ secrets.SSL_CERT }}
 
     steps:
       # 1. Checkout the repository code.
@@ -70,6 +71,23 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Create env file
+        run: |
+          echo "DEBUG=$DEBUG" >> .env
+          echo "SECRET_KEY=$SECRET_KEY" >> .env
+          echo "ALGORITHM=$ALGORITHM" >> .env
+          echo "DATABASE_URL=$DATABASE_URL" >> .env
+          echo "POSTGRES_USER=$POSTGRES_USER" >> .env
+          echo "POSTGRES_PASSWORD=$POSTGRES_PASSWORD" >> .env
+          echo "POSTGRES_DB=$POSTGRES_DB" >> .env
+          echo "DATABASE_HOST=$DATABASE_HOST" >> .env
+          echo "DATABASE_PORT=$DATABASE_PORT" >> .env
+          echo "FRONTEND_URL=$FRONTEND_URL" >> .env
+          echo "CORS_ORIGINS=$CORS_ORIGINS" >> .env
+          echo "COOKIE_SAMESITE=$COOKIE_SAMESITE" >> .env
+          echo "COOKIE_SECURE=$COOKIE_SECURE" >> .env
+          cat .env
+
       - name: Setup SSL certificates
         run: |
           mkdir -p backend/cert
@@ -80,51 +98,28 @@ jobs:
 
       - name: Build and run Docker Compose services
         run: |
-          # Build images and start containers in detached mode
-          docker compose up --build -d
-          # Wait until PostgreSQL is healthy
-          echo "Waiting for PostgreSQL to become healthy..."
-          sleep 5
-        # This step uses docker-compose to build your images (from the Dockerfile) and start both the 'db' and 'web' services.
-        # The sleep command is a simple way to wait for the services to be ready.
+          docker compose --env-file .env up --build -d
+          echo "Waiting for services to be ready..."
+          sleep 10
 
       # 9. Run tests using pytest. The tests use our custom setup (see conftest.py).
       - name: Run tests with pytest
-        run: docker compose exec backend pytest --maxfail=1 --disable-warnings -q
+        run: docker compose exec -T backend pytest --maxfail=1 --disable-warnings -v
 
       # 10. Tear down Docker Compose services after tests (runs regardless of previous step results).
       - name: Tear down Docker Compose services
         if: always()
         run: docker compose down
 
-      - name: Verify Environment Variables
+      - name: Debug Environment Variables
         run: |
-          echo "Checking environment variables:"
-          # Check presence without revealing values
-          required_vars=(
-            "SECRET_KEY" "POSTGRES_USER"
-            "POSTGRES_PASSWORD" "POSTGRES_DB"
-            "DATABASE_HOST"
-          )
-          
-          for var in "${required_vars[@]}"; do
-            if [ -z "${!var}" ]; then
-              echo "❌ Missing $var"
-              exit 1
-            else
-              echo "✅ $var is set (length: ${#var} chars)"
-            fi
-          done
-          
-          echo "DATABASE_PORT: ${DATABASE_PORT:-5432} (using fallback if empty)"
-
-      - name: Debug Configuration
-        run: |
-          echo "--- Configuration Check ---"
+          echo "Environment variables set:"
           echo "DEBUG: $DEBUG"
           echo "DATABASE_HOST: $DATABASE_HOST"
           echo "DATABASE_PORT: $DATABASE_PORT"
           echo "POSTGRES_DB: $POSTGRES_DB"
           echo "CORS_ORIGINS: $CORS_ORIGINS"
-          echo "SECRET_KEY length: ${#SECRET_KEY} chars"
-          echo "POSTGRES_PASSWORD length: ${#POSTGRES_PASSWORD} chars"
+          echo "FRONTEND_URL: $FRONTEND_URL"
+          echo "COOKIE_SAMESITE: $COOKIE_SAMESITE"
+          echo "COOKIE_SECURE: $COOKIE_SECURE"
+          echo "DATABASE_URL: $DATABASE_URL"
