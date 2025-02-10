@@ -55,9 +55,9 @@ def test_register_user(client):
     }
     response = client.post(f"{API_V1_PREFIX}/auth/register", json=TEST_USER_DUPLICATE_EMAIL)
     assert response.status_code == 400
-    assert response.json()["detail"] == "Email already registered"
+    assert response.json()["detail"] == "Email or username already registered"
 
-    # (PASS) Test username already registered 
+    # (FAIL) Test username already registered 
     TEST_USER_DUPLICATE_USERNAME = {
         "email": "test2@example.com",
         "username": "testuser",
@@ -65,10 +65,10 @@ def test_register_user(client):
     }
     response = client.post(f"{API_V1_PREFIX}/auth/register", json=TEST_USER_DUPLICATE_USERNAME)
     assert response.status_code == 400
-    assert response.json()["detail"] == "Username already registered"
+    assert response.json()["detail"] == "Email or username already registered"
 
     # (FAIL) Test duplicate registration
     response = client.post(f"{API_V1_PREFIX}/auth/register", json=TEST_USER)
     assert response.status_code == 400
-    assert response.json()["detail"] == "Email already registered"
+    assert response.json()["detail"] == "Email or username already registered"
 

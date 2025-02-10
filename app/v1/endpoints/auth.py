@@ -141,20 +141,21 @@ async def login(login_data: LoginRequest, db: Session = Depends(get_db)):
 
 @router.post("/register", response_model=RegisterResponse)
 async def register(register_data: RegisterRequest, db: Session = Depends(get_db)):
-    # Check if user exists
+    # Check if user exists by username and email
     check_query = """
         SELECT email 
         FROM users
         WHERE email = :email
+        OR username = :username
     """
     existing_user = db.execute(
-        text(check_query), {"email": register_data.email}
+        text(check_query), {"email": register_data.email, "username": register_data.username}
     ).first()
 
     logger.debug(f"/register existing_user: {existing_user}")
 
     if existing_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(status_code=400, detail="Email or username already registered")
 
     # Hash the password
     hashed_password = get_password_hash(register_data.password)
