@@ -119,8 +119,11 @@ async def verify_tokens(
     Verifies access token or uses refresh token to get new access token
     Returns username and new access token (if refreshed)
     """
-    if not access_token and not refresh_token:
-        raise HTTPException(status_code=401, detail="No tokens provided")
+    if not access_token:
+        raise HTTPException(status_code=401, detail="No access token provided")
+
+    if not refresh_token:
+        raise HTTPException(status_code=401, detail="No refresh token provided")
 
     logger.debug(f"verify tokens 1")
 
