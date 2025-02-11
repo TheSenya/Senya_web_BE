@@ -14,7 +14,7 @@ from app.core.database import Base, get_db  # SQLAlchemy Base and dependency tha
 # <-- Ensure all models are imported here so they get registered with Base.metadata.
 from app.models.user import User
 from app.models.login import LoginAttempts
-from app.models.workout import Workouts
+from app.models.workout import Workout, Exercise
 from app.models.notes import Note, NoteFolder
 
 from app.core.config import settings

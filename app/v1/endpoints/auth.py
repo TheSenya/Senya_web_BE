@@ -201,6 +201,12 @@ async def register(register_data: RegisterRequest, db: Session = Depends(get_db)
             }
         )
 
+        refresh_token = create_refresh_token(
+            data={
+                "sub": str(user_id)
+            }
+        )
+
         new_user = User(
             username=user_data.get("username", None),
             email=user_data.get("email", None),
@@ -208,10 +214,25 @@ async def register(register_data: RegisterRequest, db: Session = Depends(get_db)
             is_active=user_data.get("is_active", None),
         )
 
-        # return the user data and access token
-        return RegisterResponse(
-            user=new_user, token=Token(access_token=access_token, token_type="access")
+        response = JSONResponse(
+            content={
+                "user": new_user,
+                "token": Token(access_token=access_token, token_type="access")
+            }
         )
+        # Set refresh token as httpOnly cookie
+        response.set_cookie(
+            key="refresh_token",
+            value=refresh_token,
+            httponly=False,
+            secure=True,
+            samesite="none",
+            max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+            path="/",
+        )
+
+        # return the user data and access token
+        return response
     
     except Exception as e:
         db.rollback()

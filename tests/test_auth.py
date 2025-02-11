@@ -22,6 +22,7 @@ def test_register_user(client):
     assert "token" in data
     assert data["token"]["token_type"] == "access"
     assert "access_token" in data["token"]
+    
 
     # (FAIL) Test email missing
     TEST_USER_MISSING_EMAIL = {
@@ -71,4 +72,45 @@ def test_register_user(client):
     response = client.post(f"{API_V1_PREFIX}/auth/register", json=TEST_USER)
     assert response.status_code == 400
     assert response.json()["detail"] == "Email or username already registered"
+
+    # Test token validation flow
+    # First register and get initial tokens
+    TEST_USER_TOKENS = {
+        "email": "tokens@example.com",
+        "username": "tokenuser",
+        "password": "testpassword"
+    }
+    
+    register_response = client.post(f"{API_V1_PREFIX}/auth/register", json=TEST_USER_TOKENS)
+    assert register_response.status_code == 200
+    access_token = register_response.json()["token"]["access_token"]
+    refresh_token = register_response.cookies.get("refresh_token")
+    
+    # Test valid access token
+    headers = {"Authorization": f"Bearer {access_token}"}
+    me_response = client.get(f"{API_V1_PREFIX}/auth/me", headers=headers, cookies={"refresh_token": refresh_token})
+    assert me_response.status_code == 200
+    assert me_response.json()["email"] == TEST_USER_TOKENS["email"]
+    
+    # Test invalid access token but valid refresh token
+    invalid_token = "invalid.token.here"
+    headers = {"Authorization": f"Bearer {invalid_token}"}
+    me_response = client.get(f"{API_V1_PREFIX}/auth/me", headers=headers, cookies={"refresh_token": refresh_token})
+    assert me_response.status_code == 401
+    
+    # Test missing tokens
+    me_response = client.get(f"{API_V1_PREFIX}/auth/me")
+    assert me_response.status_code == 401
+    
+    # Test refresh token endpoint
+    refresh_response = client.post(f"{API_V1_PREFIX}/auth/refresh", cookies={"refresh_token": refresh_token})
+    assert refresh_response.status_code == 200
+    assert "access_token" in refresh_response.json()
+    
+    # Test using new access token
+    new_access_token = refresh_response.json()["access_token"]
+    headers = {"Authorization": f"Bearer {new_access_token}"}
+    me_response = client.get(f"{API_V1_PREFIX}/auth/me", headers=headers, cookies={"refresh_token": refresh_token})
+    assert me_response.status_code == 200
+    assert me_response.json()["email"] == TEST_USER_TOKENS["email"]
 
