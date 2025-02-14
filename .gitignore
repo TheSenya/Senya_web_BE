@@ -1,2 +1,9 @@
-.env
+.env*
 .venv
+deploy.sh
+deploy1.sh
+logs/
+*.log
+cert/
+*.pyc
+__pycache__/

@@ -46,13 +46,29 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Expose the port that the application listens on
-EXPOSE 8000
+EXPOSE 443
 
-# Command to run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# old command to run app on http
+# CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "443", "--reload", "--log-level", "debug"]\
+# Command to run the application on https
+# CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "443", "--reload", "--log-level", "debug","--ssl-keyfile", "./cert/localhost+1-key.pem", "--ssl-certfile", "./cert/localhost+1.pem"]
+
 # ^ This command runs the FastAPI application using Uvicorn ASGI server
 #   - "main:app" specifies the Python module containing the FastAPI app and the app object to use
 #     "main" is the name of the Python module (file) containing the FastAPI app definition (main.py)
 #     "app" is the name of the FastAPI app object defined in that module (in the main.py file)
 #   - "--host 0.0.0.0" makes the server accessible externally by any network interface on the host machine
 #   - "--port 8000" specifies the port on which the server will listen for incoming connections
+
+# Create directory for certificates
+RUN mkdir -p /app/cert
+
+# Copy start script and make it executable
+COPY start.sh .
+RUN chmod +x start.sh
+
+# Set default paths for SSL certificates (for local development)
+ENV SSL_CERT_PATH=/cert/localhost+1.pem
+ENV SSL_KEY_PATH=/cert/localhost+1-key.pem
+
+ENTRYPOINT ["./start.sh"]

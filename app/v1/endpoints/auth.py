@@ -1,99 +1,251 @@
-from fastapi import APIRouter, HTTPException, Depends
+# TODO
+# 1. update errors for the functions and endpoints
+# 2. create user schemas ,token schemas , etc schemas
+
+from datetime import datetime
+from fastapi import APIRouter, HTTPException, Depends, Cookie, Request, status
+from fastapi.security import OAuth2PasswordBearer
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.schemas.login import LoginRequest, LoginResponse
 from app.core.database import get_db
 from app.core.security import verify_password, get_password_hash
-import logging
+from app.config.logger import logger
 import uuid
+from jose import JWTError, jwt
 
-
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+from app.core.helper import row2dict
+from app.core.auth import (
+    token_auth,
+    create_access_token,
+    create_refresh_token,
+    refresh_access_token,
 )
+from app.config.constants import REFRESH_TOKEN_EXPIRE_DAYS
+from app.core.config import settings
+from app.schemas.login import RegisterRequest, RegisterResponse, Token
+from app.schemas.user import User
+from app.core.auth import get_current_user
 
-log = logging.getLogger(__name__)
+from app.v1.endpoints.note_folder import create_default_folder
 
-router = APIRouter(
-    prefix="/auth",
-    tags=["authentication"]
-)
+router = APIRouter(prefix="/auth", tags=["authentication"])
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+
 
 @router.post("/login", response_model=LoginResponse)
 async def login(login_data: LoginRequest, db: Session = Depends(get_db)):
-    log.info(f"Login attempt with username: {login_data.username}")
-    
+    logger.info(f"Login attempt with email: {login_data.email}")
+
     # Get user and hashed password
     query = """
-        SELECT username, password_hash 
+        SELECT id, email, password_hash, username
         FROM users
-        WHERE username = :username
+        WHERE email = :email
     """
-    result = db.execute(
-        text(query), 
-        {"username": login_data.username}
-    ).first()
-    
-    if not result or not verify_password(login_data.password, result.password_hash):
-        raise HTTPException(
-            status_code=401,
-            detail="Incorrect username or password"
-        )
-    
-    return {
-        "access_token": "mock_token_12345",  # You should generate a real JWT token here
-        "username": result.username
-    }
+
+    res = db.execute(text(query), {"email": login_data.email}).first()
+
+    logger.debug(f"res: {res}")
+    logger.debug(f"res.dict: {row2dict(res)}")
+
+    res_dict = row2dict(res)
+    if (
+        not res_dict
+        or not res_dict.get("email")
+        or not verify_password(login_data.password, res_dict.get("password_hash", ""))
+    ):
+        raise HTTPException(status_code=401, detail="Incorrect username or password")
+
+    access_token = create_access_token(
+        data={"sub": str(res_dict.get("id"))}
+    )
+
+    refresh_token = create_refresh_token(
+        data={"sub": str(res_dict.get("id"))}
+    )
+
+    # Create response
+    response = JSONResponse(
+        content={
+            "access_token": access_token,
+            "username": res_dict.get("username", ""),
+            "email": res_dict.get("email", ""),
+            "id": str(res_dict.get("id", "")), 
+        }
+    )
+
+    # Set refresh token as httpOnly cookie
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=False,
+        secure=True,
+        samesite="none",
+        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+        path="/",
+    )
+
+    return response
+
 
 @router.post("/register")
-async def register(login_data: LoginRequest, db: Session = Depends(get_db)):
-    # Check if user exists
+async def register(register_data: RegisterRequest, db: Session = Depends(get_db)):
+
+    logger.debug(f"register_data: {register_data}")
+    # Check if user exists by username and email
     check_query = """
-        SELECT username 
+        SELECT email 
         FROM users
-        WHERE username = :username
+        WHERE email = :email
+        OR username = :username
     """
-    existing_user = db.execute(text(check_query), {"username": login_data.username}).first()
-    
+    existing_user = db.execute(
+        text(check_query), {"email": register_data.email, "username": register_data.username}
+    ).first()
+
+    logger.debug(f"/register existing_user: {existing_user}")
+
     if existing_user:
-        raise HTTPException(
-            status_code=400,
-            detail="Username already registered"
-        )
-    
+        raise HTTPException(status_code=400, detail="Email or username already registered")
+
     # Hash the password
-    hashed_password = get_password_hash(login_data.password)
+    hashed_password = get_password_hash(register_data.password)
 
     # generate a unique id for the user
-    user_id =  uuid.uuid4()
-    
+    user_id = uuid.uuid4()
+
     # Insert new user with hashed password
     insert_query = """
-        INSERT INTO users (id, username, password_hash, created_at, updated_at) 
-        VALUES (:id ,:username, :password_hash, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-        RETURNING username
+        INSERT INTO users (id, email, username, password_hash, is_active) 
+        VALUES (:id ,:email, :username, :password_hash, true)
+        RETURNING id, email, username
     """
-    
+
     try:
-        result = db.execute(
-            text(insert_query), 
-            {   
+        # add new user to db
+        res = db.execute(
+            text(insert_query),
+            {
                 "id": user_id,
-                "username": login_data.username,
-                "password_hash": hashed_password
+                "email": register_data.email,
+                "username": register_data.username,
+                "password_hash": hashed_password,
+            },
+        ).one()
+
+        logger.debug(f"register_data.username: {register_data.username}")
+        logger.debug(f"user_id: {user_id}")
+        # create a default root folder for the user
+        create_default_folder(db, register_data.username, user_id)
+
+        # commit the transaction
+        db.commit()
+
+        # get the user data from db response
+        logger.debug(f"res: {res}")
+        user_data = row2dict(res)
+        logger.debug(f"user_data: {user_data}")
+        # create access token
+        access_token = create_access_token(
+            data={
+                "sub": str(user_id)
             }
         )
-        db.commit()
-        return {"message": "User created successfully"}
+
+        refresh_token = create_refresh_token(
+            data={
+                "sub": str(user_id)
+            }
+        )
+
+        new_user = User(
+            username=user_data.get("username", None),
+            email=user_data.get("email", None),
+            id=str(user_data.get("id", None)),
+            is_active=user_data.get("is_active", None),
+        )
+
+        response = JSONResponse(
+            content={
+                "user": new_user.model_dump(),
+                "token": Token(access_token=access_token, token_type="access").model_dump()
+            }
+        )
+        # Set refresh token as httpOnly cookie
+        response.set_cookie(
+            key="refresh_token",
+            value=refresh_token,
+            httponly=False,
+            secure=True,
+            samesite="none",
+            max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+            path="/",
+        )
+
+        # return the user data and access token
+        return response
+    
     except Exception as e:
         db.rollback()
-        log.error(f"Error creating user: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail="Error creating user"
-        )
-    
+        logger.error(f"Error creating user: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error creating user")
+
+
 @router.post("/logout")
 async def logout(db: Session = Depends(get_db)):
-    return {"message": "Logout successful"}
+    response = JSONResponse(content={"message": "Logout successful"})
+
+    # Clear the refresh token cookie
+    response.delete_cookie(
+        key="refresh_token",
+        httponly=False,
+        secure=True,
+        samesite="none",
+        path="/",
+    )
+    
+    return response
+
+
+@router.get("/me")
+@token_auth()
+async def read_me(request: Request, db: Session = Depends(get_db)):
+    logger.debug(f"/me start")
+    user = get_current_user(request, db)
+    logger.debug(f"/me user: {user}")
+    return user
+
+
+@router.post("/refresh")
+async def refresh_token(
+    refresh_token: str | None = Cookie(None, alias="refresh_token")
+):
+    if not refresh_token:
+        raise HTTPException(401, "Refresh token missing")
+
+    new_access_token = await refresh_access_token(refresh_token)
+    return {"access_token": new_access_token}
+
+# @router.get("/debug/get_cookies")
+# async def debug_get_cookies(request: Request):
+#     logger.debug(f"request.cookies: {request.cookies}")
+#     return {"cookies": dict(request.cookies)}
+
+# @router.get("/debug/set_cookie")
+# async def debug_set_cookie(request: Request):
+#     response = JSONResponse(content={"message": "Set cookie successful"})
+#     response.set_cookie(
+#         key="refresh_token",
+#         value="test_value",
+#         httponly=False,
+#         secure=True,
+#         samesite="none",
+#         max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+#         path="/",
+#     )
+    
+#     logger.debug(f"response: {response}")
+#     return response

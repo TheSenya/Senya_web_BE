@@ -1,23 +1,29 @@
 # main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.core.config import settings
+from app.config.logger import logger 
 
-from app.core.config import settings    
-
-# from pydantic import BaseModel
-# from typing import Optional
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="passlib.utils")
 
 from .v1.router import api_router
+
+logger.info("Starting application...")
 
 app = FastAPI(title=settings.APP_NAME, debug=settings.DEBUG, openapi_url=f"{settings.API_V1_STR}/openapi.json")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.get("/")
+async def read_root():
+    return {"message": "Hello, World!"}
 
 @app.get("/health")
 async def health():

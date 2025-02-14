@@ -1,0 +1,130 @@
+name: CI Pipeline
+
+# Trigger the workflow on push and pull requests to dev and main branches.
+on:
+  push:
+    branches:
+      - dev
+      - main
+  pull_request:
+    branches:
+      - dev
+      - main
+
+jobs:
+  build-and-test:
+    name: Build, Test, and Validate Docker Compose Setup
+    runs-on: ubuntu-latest
+    environment: dev
+    env:
+      # App settings
+      DEBUG: ${{ secrets.DEBUG }}
+      SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      ACCESS_TOKEN_EXPIRE_MINUTES: 30
+      ALGORITHM: "HS256"
+      
+      # Database settings
+      DATABASE_URL: postgresql://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@${{ secrets.DATABASE_HOST }}:${{ secrets.DATABASE_PORT }}/${{ secrets.POSTGRES_DB }}
+      POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+      DATABASE_HOST: ${{ secrets.DATABASE_HOST }}
+      DATABASE_PORT: ${{ secrets.DATABASE_PORT }}
+      
+      # CORS and security settings
+      FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
+      CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
+      COOKIE_SAMESITE: ${{ secrets.COOKIE_SAMESITE }}
+      COOKIE_SECURE: ${{ secrets.COOKIE_SECURE }}
+
+      # SSL settings
+      SSL_KEY: ${{ secrets.SSL_KEY }}
+      SSL_CERT: ${{ secrets.SSL_CERT }}
+
+    steps:
+      # 1. Checkout the repository code.
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      # 2. (Optional) Display a message; our next steps will run in the "backend" directory.
+      - name: Change working directory to backend
+        run: echo "Using 'backend' as working directory"
+
+      # 3. Set up Python – adjust the version if needed.
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      # 4. Cache pip dependencies to speed up subsequent builds.
+      - name: Cache pip dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      # 5. Install project dependencies.
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Create env file
+        run: |
+          echo "DEBUG=$DEBUG" >> .env
+          echo "SECRET_KEY=$SECRET_KEY" >> .env
+          echo "ALGORITHM=$ALGORITHM" >> .env
+          echo "DATABASE_URL=$DATABASE_URL" >> .env
+          echo "POSTGRES_USER=$POSTGRES_USER" >> .env
+          echo "POSTGRES_PASSWORD=$POSTGRES_PASSWORD" >> .env
+          echo "POSTGRES_DB=$POSTGRES_DB" >> .env
+          echo "DATABASE_HOST=$DATABASE_HOST" >> .env
+          echo "DATABASE_PORT=$DATABASE_PORT" >> .env
+          echo "FRONTEND_URL=$FRONTEND_URL" >> .env
+          echo "CORS_ORIGINS=$CORS_ORIGINS" >> .env
+          echo "COOKIE_SAMESITE=$COOKIE_SAMESITE" >> .env
+          echo "COOKIE_SECURE=$COOKIE_SECURE" >> .env
+          cat .env
+
+      - name: Setup SSL certificates
+        run: |
+          mkdir -p backend/cert
+          echo "$SSL_KEY" | base64 -d > backend/cert/key.pem
+          echo "$SSL_CERT" | base64 -d > backend/cert/cert.pem
+          chmod 600 backend/cert/key.pem backend/cert/cert.pem
+          ls -la backend/cert
+
+      - name: Build and run Docker Compose services
+        run: |
+          docker compose --env-file .env up --build -d
+          echo "Waiting for services to be ready..."
+          sleep 10
+
+      - name: List test files
+        run: |
+          docker compose exec -T backend ls -la /app/tests/
+          docker compose exec -T backend pwd
+
+      - name: Run tests with pytest
+        run: |
+          docker compose exec -T backend pytest tests/ -v --disable-warnings
+
+      # 10. Tear down Docker Compose services after tests (runs regardless of previous step results).
+      - name: Tear down Docker Compose services
+        if: always()
+        run: docker compose down
+
+      # - name: Debug Environment Variables
+      #   run: |
+      #     echo "Environment variables set:"
+      #     echo "DEBUG: $DEBUG"
+      #     echo "DATABASE_HOST: $DATABASE_HOST"
+      #     echo "DATABASE_PORT: $DATABASE_PORT"
+      #     echo "POSTGRES_DB: $POSTGRES_DB"
+      #     echo "CORS_ORIGINS: $CORS_ORIGINS"
+      #     echo "FRONTEND_URL: $FRONTEND_URL"
+      #     echo "COOKIE_SAMESITE: $COOKIE_SAMESITE"
+      #     echo "COOKIE_SECURE: $COOKIE_SECURE"
+      #     echo "DATABASE_URL: $DATABASE_URL"

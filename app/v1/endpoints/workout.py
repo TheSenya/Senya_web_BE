@@ -12,7 +12,7 @@ router = APIRouter(
 )
 
 @router.post("/create")
-async def create_workout(workout: WorkoutCreate, db: Session = Depends(get_db)):
+async def create_workout(workour, db: Session = Depends(get_db)):
     return {"message": "Workout created successfully"}
 
 @router.get("/get")
