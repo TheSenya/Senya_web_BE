@@ -4,8 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.config.logger import logger 
 
-# from pydantic import BaseModel
-# from typing import Optional
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="passlib.utils")
 
 from .v1.router import api_router
 

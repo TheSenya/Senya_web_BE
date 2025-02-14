@@ -1,8 +1,11 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 from pydantic import field_validator
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")   
+
+    # App settings  
     APP_NAME: str = "Senya Web Backend"
     DEBUG: bool = False
     API_V1_STR: str = "/api/v1"
@@ -23,9 +26,6 @@ class Settings(BaseSettings):
 
     COOKIE_SAMESITE: str
     COOKIE_SECURE: bool | str
-
-    class Config:
-        env_file = ".env"
 
     @field_validator("CORS_ORIGINS", mode="before")
     def assemble_cors_origins(cls, v):

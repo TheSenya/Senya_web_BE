@@ -26,61 +26,13 @@ from app.config.constants import REFRESH_TOKEN_EXPIRE_DAYS
 from app.core.config import settings
 from app.schemas.login import RegisterRequest, RegisterResponse, Token
 from app.schemas.user import User
+from app.core.auth import get_current_user
 
 from app.v1.endpoints.note_folder import create_default_folder
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
-
-
-# TODO
-def get_user(username: str = "", user_id: str = "", db: Session = Depends(get_db)):
-
-    try:
-        uuid_user_id = uuid.UUID(user_id)  # TODO: double check this
-    except ValueError:
-        raise HTTPException(status_code=401, detail="Invalid UUID in token")
-
-    if not username:
-        raise HTTPException(status_code=401, detail="Invalid username")
-
-    query = "SELECT * FROM users WHERE username = :username AND id = :id"
-    user = db.execute(text(query), {"username": username, "id": uuid_user_id}).first()
-
-
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
-
-    return row2dict(user)
-
-
-async def get_current_user(
-    request: Request, db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)
-) -> dict | None:
-
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials 1",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-
-    try:
-
-        payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
-        )
-        user_id = payload.get("sub")  # uuid is stored as a string in the jwt
-        username = payload.get("name")
-        if username is None or user_id is None:
-            raise credentials_exception
-
-    except Exception as e:
-        raise credentials_exception
-
-    user = get_user(username, user_id, db)
-
-    return user
 
 
 @router.post("/login", response_model=LoginResponse)
@@ -141,6 +93,8 @@ async def login(login_data: LoginRequest, db: Session = Depends(get_db)):
 
 @router.post("/register")
 async def register(register_data: RegisterRequest, db: Session = Depends(get_db)):
+
+    logger.debug(f"register_data: {register_data}")
     # Check if user exists by username and email
     check_query = """
         SELECT email 
@@ -258,10 +212,11 @@ async def logout(db: Session = Depends(get_db)):
 
 @router.get("/me")
 @token_auth()
-async def read_me(request: Request):
-    current_user = await get_current_user(request)
-    logger.debug(f"/me")
-    return current_user
+async def read_me(request: Request, db: Session = Depends(get_db)):
+    logger.debug(f"/me start")
+    user = get_current_user(request, db)
+    logger.debug(f"/me user: {user}")
+    return user
 
 
 @router.post("/refresh")

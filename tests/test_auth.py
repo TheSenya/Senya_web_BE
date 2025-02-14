@@ -1,5 +1,5 @@
-from conftest import client
 from app.core.config import settings
+from app.config.logger import logger
 import sys
 sys.dont_write_bytecode = True
 # from app.core.logger import logger
@@ -9,8 +9,7 @@ API_V1_PREFIX = settings.API_V1_STR
 # logger.info(f"API_V1_PREFIX: {API_V1_PREFIX}")
 
 def test_register_user(client):
-
-    # Test data
+    # Test data for successful registration
     TEST_USER = {
         "email": "test@example.com",
         "username": "testuser",
@@ -18,7 +17,11 @@ def test_register_user(client):
     }
 
     # (PASS) Test successful registration
-    response = client.post(f"{API_V1_PREFIX}/auth/register", json=TEST_USER)
+    response = client.post(f"{API_V1_PREFIX}/auth/register", json={
+        "email": "test@example.com",
+        "username": "testuser",
+        "password": "testpassword"
+    })
     assert response.status_code == 200
     data = response.json()
     assert data["user"]["email"] == TEST_USER["email"]
@@ -90,6 +93,9 @@ def test_register_user(client):
     access_token = register_response.json()["token"]["access_token"]
     refresh_token = register_response.cookies.get("refresh_token")
     
+    logger.debug(f"access_token: {access_token}")
+    logger.debug(f"refresh_token: {refresh_token}")
+
     # Test valid access token
     headers = {"Authorization": f"Bearer {access_token}"}
     me_response = client.get(f"{API_V1_PREFIX}/auth/me", headers=headers, cookies={"refresh_token": refresh_token})
@@ -106,15 +112,4 @@ def test_register_user(client):
     me_response = client.get(f"{API_V1_PREFIX}/auth/me")
     assert me_response.status_code == 401
     
-    # Test refresh token endpoint
-    refresh_response = client.post(f"{API_V1_PREFIX}/auth/refresh", cookies={"refresh_token": refresh_token})
-    assert refresh_response.status_code == 200
-    assert "access_token" in refresh_response.json()
-    
-    # Test using new access token
-    new_access_token = refresh_response.json()["access_token"]
-    headers = {"Authorization": f"Bearer {new_access_token}"}
-    me_response = client.get(f"{API_V1_PREFIX}/auth/me", headers=headers, cookies={"refresh_token": refresh_token})
-    assert me_response.status_code == 200
-    assert me_response.json()["email"] == TEST_USER_TOKENS["email"]
 

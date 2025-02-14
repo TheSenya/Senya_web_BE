@@ -125,7 +125,9 @@ async def verify_tokens(
     if not refresh_token:
         raise HTTPException(status_code=401, detail="No refresh token provided")
 
-    logger.debug(f"verify tokens 1")
+    logger.debug(f"DISPLAY TOKENS")
+    logger.debug(f"access_token: {access_token}")
+    logger.debug(f"refresh_token: {refresh_token}")
 
     # First try to verify access token
     try:
