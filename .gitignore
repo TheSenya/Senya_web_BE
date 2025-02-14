@@ -5,3 +5,5 @@ deploy1.sh
 logs/
 *.log
 cert/
+*.pyc
+__pycache__/

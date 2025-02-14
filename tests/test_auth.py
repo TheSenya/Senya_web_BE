@@ -1,8 +1,12 @@
 from conftest import client
 from app.core.config import settings
+import sys
+sys.dont_write_bytecode = True
+# from app.core.logger import logger
 
 # Define the API prefix from configuration
 API_V1_PREFIX = settings.API_V1_STR
+# logger.info(f"API_V1_PREFIX: {API_V1_PREFIX}")
 
 def test_register_user(client):
 
