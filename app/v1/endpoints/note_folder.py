@@ -80,7 +80,6 @@ async def get_user_folders(request: Request, db: Session = Depends(get_db)):
 
     logger.debug(f"get user folders res DICT: {rows2dict(res)}")
 
-
     return rows2dict(res)
 
 

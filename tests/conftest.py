@@ -4,6 +4,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from testcontainers.postgres import PostgresContainer
 from fastapi.testclient import TestClient
+import sys
+
+
 
 # Import your FastAPI app and the database items.
 # Adjust these import paths according to your project structure.
@@ -19,7 +22,8 @@ from app.models.notes import Note, NoteFolder
 
 from app.core.config import settings
 
-
+# stop bytecode generation  
+sys.dont_write_bytecode = True
 
 # ------------------------------------------------------------------------------
 # Fixture: Start PostgreSQL Container for Tests
@@ -51,9 +55,10 @@ def test_engine(postgres_container):
     
     This engine is shared across all tests in the session.
     """
-    # Get the connection URL from the running container
-    engine = create_engine(postgres_container.get_connection_url())
-    # Create the database tables using your metadata (make sure all your models have been imported)
+    # Override the database URL in your settings
+    settings.DATABASE_URL = postgres_container.get_connection_url()
+    
+    engine = create_engine(settings.DATABASE_URL)
     Base.metadata.create_all(bind=engine)
     yield engine
     engine.dispose()

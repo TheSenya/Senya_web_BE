@@ -139,7 +139,7 @@ async def login(login_data: LoginRequest, db: Session = Depends(get_db)):
     return response
 
 
-@router.post("/register", response_model=RegisterResponse)
+@router.post("/register")
 async def register(register_data: RegisterRequest, db: Session = Depends(get_db)):
     # Check if user exists by username and email
     check_query = """
@@ -216,8 +216,8 @@ async def register(register_data: RegisterRequest, db: Session = Depends(get_db)
 
         response = JSONResponse(
             content={
-                "user": new_user,
-                "token": Token(access_token=access_token, token_type="access")
+                "user": new_user.model_dump(),
+                "token": Token(access_token=access_token, token_type="access").model_dump()
             }
         )
         # Set refresh token as httpOnly cookie
