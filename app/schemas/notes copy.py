@@ -3,6 +3,10 @@ from pydantic import BaseModel
 from datetime import datetime, date
 from typing import List, Dict
 import uuid
+
+# TODO: 
+# - turn this into a note_fodler schema file
+
 class NoteFolder(BaseModel):
     id: int
     user_id: uuid.UUID
@@ -39,12 +43,10 @@ class NoteFolderDelete(BaseModel):
     user_id: str
 
 class NoteCreate(BaseModel):
-    title: str
-    format: str
-    content: str | None = None
-    folder_id: int
-
-
+    user_id: str
+    name: str
+    content: Dict  
+    folder_id: int  
     
 class NoteEdit(BaseModel):
     id: int
