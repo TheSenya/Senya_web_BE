@@ -2,7 +2,7 @@ from pydantic import BaseModel, field_validator
 from uuid import UUID
 
 class User(BaseModel):
-    id: str | None = None
+    id: str
     username: str | None = None
     email: str | None = None
     full_name: str | None = None

@@ -45,12 +45,9 @@ def create_default_folder(db, username, user_id) -> NoteFolder:
             "is_root": True,
         },
     ).one()
-    logger.debug(f"create root folder res: {res}")
-    logger.debug(f"create root folder res DICT: {row2dict(res)}")
 
     new_folder = row2dict(res)
 
-    logger.debug(f"root note create {new_folder}")
     return NoteFolder(id=new_folder["id"], user_id=new_folder["user_id"], name=new_folder["name"], parent_id=new_folder["parent_id"], is_root=new_folder["is_root"])
 
 
@@ -65,20 +62,19 @@ async def get_user_folders(request: Request, db: Session = Depends(get_db)):
     
     user_id = user.id
     
-    logger.debug(f"get user folders for user: {user_id}")
 
     query = """
         SELECT * FROM note_folder WHERE user_id = :user_id
     """
     res = db.execute(text(query), {"user_id": user_id}).all()
 
-    logger.debug(f"get user folders res: {res}")
+    #logger.debug(f"get user folders res: {res}")
 
     validated_folders = [NoteFolder.model_validate(folder) for folder in res]
-    logger.debug(f"get user folders validated_folders: {validated_folders}")
+    #logger.debug(f"get user folders validated_folders: {validated_folders}")
 
 
-    logger.debug(f"get user folders res DICT: {rows2dict(res)}")
+    #logger.debug(f"get user folders res DICT: {rows2dict(res)}")
 
     return rows2dict(res)
 
@@ -118,7 +114,6 @@ async def create_note_folder(request: Request, folder: NoteFolderCreate, db: Ses
     
     res = db.execute(text(query), {"user_id": user_id, "name": folder.name, "parent_id": folder.parent_id, "is_root": False}).one()
 
-    logger.debug(f"create new folder res DICT: {row2dict(res)}")
 
     new_folder = row2dict(res)
 

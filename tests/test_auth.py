@@ -112,4 +112,22 @@ def test_register_user(client):
     me_response = client.get(f"{API_V1_PREFIX}/auth/me")
     assert me_response.status_code == 401
     
+def test_login_user(client):
+    # Test data for successful login
+    TEST_USER = {
+        "email": "test@example.com",
+        "password": "testpassword"
+    }
 
+    # create a user
+    client.post(f"{API_V1_PREFIX}/auth/register", json=TEST_USER)
+    # logout the user
+    client.post(f"{API_V1_PREFIX}/auth/logout")
+
+    # login the user
+    response = client.post(f"{API_V1_PREFIX}/auth/login", json=TEST_USER)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["user"]["email"] == TEST_USER["email"]
+    assert "token" in data
+    assert data["token"]["token_type"] == "access"
