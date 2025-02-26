@@ -36,10 +36,10 @@ def get_file_formats():
 
 
 @router.websocket("/ws/{note_id}")
-# @token_auth_ws()
+# Temporarily uncomment to allow connections without auth
 async def note_websocket(websocket: WebSocket, note_id: str, db: Session = Depends(get_db)):
 
-    #logger.info(f"WebSocket connection attempt for note_id: {note_id}")
+    logger.info(f"WebSocket connection attempt for note_id: {note_id}")
     #logger.info(f"Headers: {websocket.headers}")
     # ... rest of the code
 
