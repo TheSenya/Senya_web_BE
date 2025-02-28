@@ -1,5 +1,5 @@
 import token
-from fastapi import APIRouter, Depends, HTTPException, WebSocket
+from fastapi import APIRouter, Depends, HTTPException, WebSocket,Cookie,WebSocketDisconnect
 from sqlalchemy.orm import Session
 from sqlalchemy import event, text
 from typing import List
@@ -37,32 +37,48 @@ def get_file_formats():
 
 @router.websocket("/ws/{note_id}")
 # Temporarily uncomment to allow connections without auth
-async def note_websocket(websocket: WebSocket, note_id: str, db: Session = Depends(get_db)):
+async def note_websocket(websocket: WebSocket, note_id: str,session: str = Cookie(None), db: Session = Depends(get_db)):
 
     logger.info(f"WebSocket connection attempt for note_id: {note_id}")
-    #logger.info(f"Headers: {websocket.headers}")
-    # ... rest of the code
 
-    # get current user
-    # user = get_current_user(request, db)
+    # room_id 
+    logger.info(f'session: {session}')
+    logger.info(f'webscoket.cookie : {websocket.cookies}')
 
-    # if user is None:
-    #     raise HTTPException(status_code=401, detail="User not found")
+    room_id = f'noteroom_{note_id}'
     
-    # user_id = user.id
-    # user_id = websocket.state.user["id"]
+    # Accept the websocket connection first
+    await websocket.accept()
+    
+    # Generate a unique client ID for this connection
+    client_id = f"client_{str(uuid.uuid4())[:8]}"
 
-    logger.info(f"user_id websocket: {1}")
+    auth_msg = await websocket.receive_text()
+    auth_msg = json.loads(auth_msg)
 
-    # connect to websocket
-    # room_id = f"note_{uuid.uuid4()}"
-    await ws_manager.connect(websocket)
+    logger.debug('auth message', auth_msg)
 
+    if auth_msg.get('type') == 'authenticate' and auth_msg.get('token'):
+        logger.info(f"Authenticated")
+        # Now that authentication passed, join the proper room
+        await ws_manager.join_room(client_id, websocket, room_id)
+    else:
+        logger.info(f"Not authenticated")
+        await websocket.close(code=1008)  # Policy violation
+        return
+    
     # receive messages
-    while True:
-        data = await websocket.receive_text()
-        logger.info(f"Received data: {data}")
-        await websocket.send_text(f"Received: {data}")
+    try:
+        while True:
+            data = await websocket.receive_text()
+            logger.info(f"Received data: {data}")
+            await websocket.send_text(f"Received: {data}")
+    except WebSocketDisconnect:
+        logger.info(f"Client {client_id} disconnected from room {room_id}")
+        await ws_manager.disconnect(client_id, room_id)
+    except Exception as e:
+        logger.error(f"Error: {e}")
+        await ws_manager.disconnect(client_id, room_id)
 
 # ------------------------------------------------------------------------------------------------
 # Note endpoints
