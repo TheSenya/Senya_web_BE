@@ -35,6 +35,17 @@ jobs:
           echo "Deploying to EC2 host: ${EC2_HOST:0:4}***"
           echo "Using username: $EC2_USERNAME"
 
+      - name: Debug SSH key format
+        run: |
+          # Don't print the actual key, just check beginning format
+          echo "First line of key: $(echo "$SSH_PRIVATE_KEY" | head -n 1)"
+          # Check if key is properly formatted with line breaks
+          if ! echo "$SSH_PRIVATE_KEY" | grep -q "BEGIN"; then
+            echo "SSH key appears to be malformed - missing BEGIN line"
+          fi
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH }}
+
       - name: Deploy to EC2
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
