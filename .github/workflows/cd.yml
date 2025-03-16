@@ -51,15 +51,27 @@ jobs:
           EC2_HOST: ${{ secrets.EC2_HOST }}
           EC2_USERNAME: ${{ secrets.EC2_USERNAME }}
         run: |
-          # Connect and run deployment commands
-          ssh -i ~/.ssh/ec2_key.pem $EC2_USERNAME@$EC2_HOST << 'ENDSSH'
-            cd /ec2-user/senya-backend
+          # Test connection first with verbose logging
+          echo "Testing SSH connection..."
+          ssh -v -o StrictHostKeyChecking=no -i ~/.ssh/ec2_key.pem $EC2_USERNAME@$EC2_HOST "echo 'Connection successful'"
+          
+          # If test succeeds, proceed with deployment
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/ec2_key.pem $EC2_USERNAME@$EC2_HOST << 'ENDSSH'
+            # Correct path - make sure this matches your actual directory structure
+            cd ~/senya-backend || cd /home/$EC2_USERNAME/senya-backend
+            
+            echo "Current directory: $(pwd)"
             git pull origin main
+            
             # Uncomment and adjust the following as needed
             # docker-compose down
             # docker-compose up -d
             # or
-            # ./start.sh
+            if [ -f "./start.sh" ]; then
+              chmod +x ./start.sh
+              ./start.sh
+            fi
+            
             echo "Deployment completed"
           ENDSSH
 
