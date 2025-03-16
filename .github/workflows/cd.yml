@@ -53,7 +53,7 @@ jobs:
         run: |
           # Connect and run deployment commands
           ssh -i ~/.ssh/ec2_key.pem $EC2_USERNAME@$EC2_HOST << 'ENDSSH'
-            cd /path/to/your/backend
+            cd /ec2-user/senya-backend
             git pull origin main
             # Uncomment and adjust the following as needed
             # docker-compose down
