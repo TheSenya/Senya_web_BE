@@ -1,5 +1,5 @@
 import token
-from fastapi import APIRouter, Depends, HTTPException, WebSocket,Cookie,WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, Cookie, WebSocketDisconnect
 from sqlalchemy.orm import Session
 from sqlalchemy import event, text
 from typing import List
@@ -13,7 +13,7 @@ from app.schemas.notes import (
     Note
 )
 from app.core.websocket_super_simple import WebSocketManager
-from app.core.auth import token_auth, token_auth_ws
+from app.core.auth import token_auth, token_auth_ws, token_auth_ws_v2
 from app.config.logger import logger
 from fastapi import Request
 import uuid
@@ -33,52 +33,34 @@ def get_file_formats():
 # Note websocket
 # ------------------------------------------------------------------------------------------------
 
-
-
 @router.websocket("/ws/{note_id}")
-# Temporarily uncomment to allow connections without auth
-async def note_websocket(websocket: WebSocket, note_id: str,session: str = Cookie(None), db: Session = Depends(get_db)):
+@token_auth_ws_v2()
+async def note_websocket(websocket: WebSocket, note_id: str, user_id: str = '', db: Session = Depends(get_db)):
+    """WebSocket endpoint for note collaboration with authentication"""
+    logger.info(f"--------------------------------------: WEBSOCKET ENDPOINT")
+    logger.info(f"WebSocket connection established for note_id: {note_id}, user_id: {user_id}")
 
-    logger.info(f"WebSocket connection attempt for note_id: {note_id}")
-
-    # room_id 
-    logger.info(f'session: {session}')
-    logger.info(f'webscoket.cookie : {websocket.cookies}')
-
-    room_id = f'noteroom_{note_id}'
-    
-    # Accept the websocket connection first
-    await websocket.accept()
-    
-    # Generate a unique client ID for this connection
-    client_id = f"client_{str(uuid.uuid4())[:8]}"
-
-    auth_msg = await websocket.receive_text()
-    auth_msg = json.loads(auth_msg)
-
-    logger.debug('auth message', auth_msg)
-
-    if auth_msg.get('type') == 'authenticate' and auth_msg.get('token'):
-        logger.info(f"Authenticated")
-        # Now that authentication passed, join the proper room
-        await ws_manager.join_room(client_id, websocket, room_id)
-    else:
-        logger.info(f"Not authenticated")
-        await websocket.close(code=1008)  # Policy violation
-        return
-    
-    # receive messages
     try:
         while True:
             data = await websocket.receive_text()
-            logger.info(f"Received data: {data}")
-            await websocket.send_text(f"Received: {data}")
+            logger.info(f"Received data from user {user_id}: {data}")
+            
+            # Send response as JSON instead of plain text for better client handling
+            await websocket.send_json({
+                "type": "message",
+                "content": data,
+                "note_id": note_id,
+                "timestamp": datetime.now().isoformat()
+            })
     except WebSocketDisconnect:
-        logger.info(f"Client {client_id} disconnected from room {room_id}")
-        await ws_manager.disconnect(client_id, room_id)
+        logger.info(f"Client {user_id} disconnected")
+        await ws_manager.disconnect(user_id, websocket)
     except Exception as e:
-        logger.error(f"Error: {e}")
-        await ws_manager.disconnect(client_id, room_id)
+        logger.error(f"Error in WebSocket communication: {e}")
+        try:
+            await ws_manager.disconnect(user_id, websocket)
+        except:
+            pass
 
 # ------------------------------------------------------------------------------------------------
 # Note endpoints

@@ -3,7 +3,7 @@ from functools import wraps
 from typing import Optional
 import json
 import inspect  # <-- To check if a function is a coroutine
-from fastapi import Request, HTTPException, Depends, WebSocket
+from fastapi import Request, HTTPException, Depends, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from fastapi.concurrency import run_in_threadpool  # <-- To run sync endpoints asynchronously
 from sqlalchemy.orm import Session
@@ -16,7 +16,9 @@ from app.config.constants import ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPI
 from app.config.logger import logger
 from app.core.helper import row2dict
 from app.schemas.user import User
+from app.core.websocket_super_simple import WebSocketManager
 
+ws_manager = WebSocketManager()
 
 # get the current user from the request
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> User | None:
@@ -238,39 +240,207 @@ def token_auth():
 
     return decorator
 
+# async def token_auth_ws(websocket: WebSocket) -> tuple[WebSocket, str]:
+
+#     user_id = ''
+
+#     logger.info(f"--------------------------------------: {websocket}")
+#     try:
+
+#         '''
+#             1. check if access_token exists
+#             2. validate access token
+#                 2.1 tell user to validate and close websocket
+#                 2.1 continue
+#         '''
+
+#         temp_user_id = 'temp_user'
+
+#         await ws_manager.connect(websocket, temp_user_id)
+
+#         # get auth message with access_token
+#         auth_msg = await websocket.receive_text()
+#         auth_msg = json.loads(auth_msg)
+
+#         logger.debug('auth message', auth_msg)
+
+#         access_token = ''
+
+#         if auth_msg and auth_msg.get('type') == 'authenticate' and auth_msg.get('token') is not None:
+#             access_token = auth_msg.get('token')
+#         else: 
+#             await ws_manager.disconnect(temp_user_id)
+#             raise
+
+#         try:
+#             payload = jwt.decode(
+#                 access_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+#             )
+
+#             if payload.get("token_type") != "access":
+#                 raise HTTPException(
+#                     status_code=401, detail="Invalid access token type"
+#                 )
+
+#             user_id = str(payload.get("sub"))
+
+#             if not user_id:
+#                 raise HTTPException(
+#                     status_code=401, detail="Access token does not contain user id"
+#                 )
+
+#         except Exception as e:
+#             await ws_manager.disconnect(temp_user_id)
+#             pass
+
+    
+        
+#     except Exception as e:
+#         # Close websocket connection if authentication fails
+#         await websocket.close(code=1008, reason="Authentication failed")
+#         raise
+                
+#     return websocket, user_id
+
 def token_auth_ws():
-    """
-    Decorator to enforce token validation and refresh logic for WebSocket connections.
-    This decorator extracts the access token from route parameters and refresh token from cookies,
-    validates them, and if necessary refreshes the access token.
-    """
+    """Decorator for WebSocket authentication"""
     def decorator(func):
         @wraps(func)
         async def wrapper(websocket: WebSocket, *args, **kwargs):
+            # Accept the connection first
             logger.info(f"--------------------------------------: {websocket}")
+            logger.info(f"token_auth_ws: {websocket.cookies}")
+            temp_user_id = 'temp_user'
+
+            await ws_manager.connect(websocket, temp_user_id)
+            
             try:
-                # Extract access token from query parameters
-                access_token = websocket.query_params.get("token")
+                # Get auth message with access_token
+                auth_msg = await websocket.receive_text()
+                auth_msg = json.loads(auth_msg)
                 
-                # Get refresh token from cookies
-                cookies = websocket.cookies
-                refresh_token = cookies.get("refresh_token")
+                logger.debug('auth message', auth_msg)
                 
-                # Verify the tokens
-                verified_access_token, user_id = await verify_tokens(access_token, refresh_token)
+                # Validate auth message
+                if not auth_msg or auth_msg.get('type') != 'authenticate' or auth_msg.get('token') is None:
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": "Authentication required"
+                    })
+                    await websocket.close(code=1008, reason="Authentication failed")
+                    return
+                    
+                access_token = auth_msg.get('token')
                 
-                # Attach user information to the websocket state
-                websocket.state.user = {"id": user_id}
-                logger.info(f"websocket.state.user: {websocket.state.user}")
-                logger.info(f"websocket.query_params: {websocket.query_params}")
-                logger.info(f"websocket.cookies: {websocket.cookies}")
-                # Execute the websocket handler
-                return await func(websocket, *args, **kwargs)
-                
+                try:
+                    # Decode and validate token
+                    payload = jwt.decode(
+                        access_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+                    )
+                    
+                    if payload.get("token_type") != "access":
+                        await websocket.send_json({
+                            "type": "error",
+                            "message": "Invalid access token type"
+                        })
+                        await websocket.close(code=1008)
+                        return
+                        
+                    user_id = str(payload.get("sub"))
+                    
+                    if not user_id:
+                        await websocket.send_json({
+                            "type": "error",
+                            "message": "Access token does not contain user id"
+                        })
+                        await websocket.close(code=1008)
+                        return
+                    
+                    # Successfully authenticated - run the handler with the user_id
+                    return await func(websocket, user_id=user_id, *args, **kwargs)
+                    
+                except JWTError:
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": "Invalid or expired token"
+                    })
+                    await websocket.close(code=1008)
+                    return
+                    
+            except WebSocketDisconnect:
+                logger.info("Client disconnected during authentication")
             except Exception as e:
-                # Close websocket connection if authentication fails
-                await websocket.close(code=1008, reason="Authentication failed")
-                raise
+                logger.error(f"Authentication error: {str(e)}")
+                await websocket.close(code=1008)
                 
         return wrapper
+    
+    return decorator
+
+def token_auth_ws_v2():
+    """Decorator for WebSocket authentication"""
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(websocket: WebSocket, *args, **kwargs):
+            # accept websocket connection
+            logger.info(f"token_auth_ws_v2 start")
+            temp_user_id = 'temp_user'
+
+            await ws_manager.connect(websocket, temp_user_id)
+
+            # get first ws message which contains the access_token
+            try:
+                auth_msg = await websocket.receive_text()
+                auth_msg = json.loads(auth_msg)
+
+                logger.debug(f'auth message: {auth_msg}')
+
+                access_token = auth_msg.get('token')
+                logger.debug(f'access_token: {access_token}')
+                
+                # validate access_token
+                try:
+                    payload = jwt.decode(
+                        access_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+                    )   
+
+                    if payload.get("token_type") != "access":
+                        await websocket.send_json({
+                            "type": "error",
+                            "message": "Invalid access token type"
+                        })
+                        await ws_manager.disconnect(temp_user_id, websocket)
+                        return
+                    
+                    user_id = str(payload.get("sub"))
+                    logger.debug(f'user_id: {user_id}')
+                    
+                    # Check if the function already has a user_id parameter
+                    sig = inspect.signature(func)
+                    has_user_id_param = 'user_id' in sig.parameters
+                    
+                    # If the endpoint already expects a user_id parameter, modify kwargs
+                    if has_user_id_param:
+                        # Override kwargs with the authenticated user_id
+                        kwargs['user_id'] = user_id
+                    
+                    # if access_token is valid, run the handler
+                    return await func(websocket, *args, **kwargs)
+                
+                except JWTError as e:
+                    logger.error(f"JWT validation error: {str(e)}")
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": "Invalid or expired token"
+                    })
+                    await ws_manager.disconnect(temp_user_id, websocket)
+                    return
+
+            except Exception as e:
+                logger.error(f"Authentication error: {str(e)}")
+                await ws_manager.disconnect(temp_user_id, websocket)
+                return
+    
+        return wrapper
+    
     return decorator
