@@ -18,16 +18,16 @@ jobs:
       - name: Set up GitHub CLI
         run: |
           # Ensure GitHub CLI is installed and authenticated
-          if ! command -v gh &> /dev/null; then
-            echo "GitHub CLI not installed. Please install it first."
-            exit 1
-          fi
+          # if ! command -v gh &> /dev/null; then
+          #   echo "GitHub CLI not installed. Please install it first."
+          #   exit 1
+          # fi
           
-          # Check if already logged in
-          if ! gh auth status &> /dev/null; then
-            echo "Please run 'gh auth login' first to authenticate with GitHub"
-            exit 1
-          fi
+          # # Check if already logged in
+          # if ! gh auth status &> /dev/null; then
+          #   echo "Please run 'gh auth login' first to authenticate with GitHub"
+          #   exit 1
+          # fi
 
       - name: Fetch EC2 credentials from GitHub secrets
         run: |
