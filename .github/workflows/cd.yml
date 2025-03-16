@@ -15,48 +15,33 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up GitHub CLI
+      - name: Create SSH key file
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USERNAME: ${{ secrets.EC2_USERNAME }}
         run: |
-          # Ensure GitHub CLI is installed and authenticated
-          # if ! command -v gh &> /dev/null; then
-          #   echo "GitHub CLI not installed. Please install it first."
-          #   exit 1
-          # fi
+          # Create SSH directory
+          mkdir -p ~/.ssh
           
-          # # Check if already logged in
-          # if ! gh auth status &> /dev/null; then
-          #   echo "Please run 'gh auth login' first to authenticate with GitHub"
-          #   exit 1
-          # fi
-
-      - name: Fetch EC2 credentials from GitHub secrets
-        run: |
-          # Create a temporary .env file with the secrets
-          echo "Fetching EC2 credentials from GitHub secrets..."
+          # Save the private key to a file
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/ec2_key.pem
+          chmod 600 ~/.ssh/ec2_key.pem
           
-          # Extract secrets using GitHub CLI
-          EC2_HOST=$(gh secret get EC2_HOST -R ${{ github.repository }})
-          EC2_USERNAME=$(gh secret get EC2_USERNAME -R ${{ github.repository }})
+          # Add host to known hosts
+          ssh-keyscan -H $EC2_HOST >> ~/.ssh/known_hosts
           
-          # Create a deployment config file
-          echo "EC2_HOST=$EC2_HOST" > .ec2_config
-          echo "EC2_USERNAME=$EC2_USERNAME" >> .ec2_config
-          
-          # Fetch the SSH key and save it with proper permissions
-          gh secret get EC2_SSH_KEY -R ${{ github.repository }} > ec2_key.pem
-          chmod 600 ec2_key.pem
-
-      - name: Deploy to EC2
-        run: |
-          # Source the config 
-          source .ec2_config
-          
-          # Display info without exposing full values
+          # Display info for debugging (masked)
           echo "Deploying to EC2 host: ${EC2_HOST:0:4}***"
           echo "Using username: $EC2_USERNAME"
-          
+
+      - name: Deploy to EC2
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USERNAME: ${{ secrets.EC2_USERNAME }}
+        run: |
           # Connect and run deployment commands
-          ssh -i ec2_key.pem -o StrictHostKeyChecking=no $EC2_USERNAME@$EC2_HOST << 'ENDSSH'
+          ssh -i ~/.ssh/ec2_key.pem $EC2_USERNAME@$EC2_HOST << 'ENDSSH'
             cd /path/to/your/backend
             git pull origin main
             # Uncomment and adjust the following as needed
@@ -70,6 +55,6 @@ jobs:
       - name: Cleanup sensitive files
         if: always()
         run: |
-          rm -f .ec2_config ec2_key.pem
+          rm -f ~/.ssh/ec2_key.pem
           echo "Credentials cleaned up"
 
