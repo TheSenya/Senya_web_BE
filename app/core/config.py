@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int | str = 30
     ALGORITHM: str = "HS256"  # Adding this for JWT encoding
+    LOG_LEVEL: str = "INFO"
 
     # Database settings
     DATABASE_URL: str
@@ -32,7 +33,7 @@ class Settings(BaseSettings):
         # If a string is provided, split it by comma
         if isinstance(v, str):
             return [origin.strip() for origin in v.split(",") if origin.strip()]
-        # Otherwise, assume it’s already a list (e.g. provided as JSON)
+        # Otherwise, assume it's already a list (e.g. provided as JSON)
         if isinstance(v, list):
             return v
         raise ValueError("Invalid CORS_ORIGINS format")

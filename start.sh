@@ -20,7 +20,20 @@ echo "SSL_KEY_PATH: $SSL_KEY_PATH"
 echo "SSL_CERT_PATH: $SSL_CERT_PATH"
 ls -la /app/cert
 
+# Database migration setup
+echo "Setting up database migrations..."
+
+# Check if migrations directory exists and has version files
+if [ ! -d "/app/migrations/versions" ] || [ -z "$(ls -A /app/migrations/versions)" ]; then
+    echo "No migrations found. Generating initial migration..."
+    alembic revision --autogenerate -m "Initial migration"
+fi
+
+# Run database migrations
+echo "Running database migrations..."
+alembic upgrade head
+
 # Start the application with the appropriate certificate paths
-exec uvicorn app.main:app --host 0.0.0.0 --port 443 --reload --log-level debug \
+exec uvicorn app.main:app --host 0.0.0.0 --port 443 --reload --log-level "${UVICORN_LOG_LEVEL:-debug}" \
     --ssl-keyfile "$SSL_KEY_PATH" \
     --ssl-certfile "$SSL_CERT_PATH"
