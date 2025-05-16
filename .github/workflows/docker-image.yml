@@ -11,15 +11,14 @@ on:
   #     - main
 
 env:
-  AWS_REGION: ${{ secrets.AWS_REGION_ECR }} # e.g., us-east-1
-  ECR_REPOSITORY: ${{ secrets.AWS_ECR_REPOSITORY }} # The name of your ECR repository
   IMAGE_TAG: ${{ github.sha }} # Use commit SHA for unique image tags, or 'latest'
 
 jobs:
   build-and-push-image:
     name: Build and Push to ECR
     runs-on: ubuntu-latest # Use the latest Ubuntu runner
-
+    environment: prod
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4 # Always use the latest major version
@@ -29,7 +28,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: ${{ secrets.AWS_REGION_ECR }}
 
       - name: Log in to Amazon ECR
         id: login-ecr
@@ -47,8 +46,8 @@ jobs:
           file: ./Dockerfile # Path to your Dockerfile, if not at the root of context
           push: true
           tags: |
-            ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
-            ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest # Optional: also tag as latest
+            ${{ env.ECR_REGISTRY }}/${{ secrets.AWS_ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+            ${{ env.ECR_REGISTRY }}/${{ env.AWS_ECR_REPOSITORY }}:latest # Optional: also tag as latest
 
         # Option 2: Using Docker CLI commands (more explicit control)
         # run: |
@@ -59,7 +58,7 @@ jobs:
         #   docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
       - name: Output Image URL
-        run: echo "Image pushed to ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}"
+        run: echo "Image pushed to ${{ steps.login-ecr.outputs.registry }}/${{ secrets.AWS_ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}"
 
       # Optional: Add a step to trigger a deployment on ECS or App Runner if needed
       # - name: Deploy to ECS
