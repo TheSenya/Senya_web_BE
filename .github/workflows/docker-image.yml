@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main # Or your primary deployment branch, e.g., master, develop
+      - workflow_dispatch
   # You can also trigger on pull requests, releases, etc.
   # pull_request:
   #   branches:
