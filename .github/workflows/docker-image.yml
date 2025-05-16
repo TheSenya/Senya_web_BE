@@ -45,7 +45,6 @@ jobs:
           push: true
           tags: |
             ${{ env.ECR_REGISTRY_STEP_OUTPUT }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
-            # Optional: also tag as latest
             ${{ env.ECR_REGISTRY_STEP_OUTPUT }}/${{ env.ECR_REPOSITORY }}:latest
           # Adding build arguments example (if needed)
           # build-args: |
