@@ -11,8 +11,8 @@ on:
   #     - main
 
 env:
-  AWS_REGION: ${{ env.AWS_REGION_ECR }} # e.g., us-east-1
-  ECR_REPOSITORY: ${{ env.AWS_ECR_REPOSITORY }} # The name of your ECR repository
+  AWS_REGION: ${{ secrets.AWS_REGION_ECR }} # e.g., us-east-1
+  ECR_REPOSITORY: ${{ secrets.AWS_ECR_REPOSITORY }} # The name of your ECR repository
   IMAGE_TAG: ${{ github.sha }} # Use commit SHA for unique image tags, or 'latest'
 
 jobs:
