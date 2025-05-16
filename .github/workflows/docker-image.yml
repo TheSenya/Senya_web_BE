@@ -1,18 +1,18 @@
 name: Build and Push Backend to ECR
 
 on:
+  workflow_dispatch: # for testing purposes
   push:
     branches:
       - main # Or your primary deployment branch, e.g., master, develop
-      - workflow_dispatch
   # You can also trigger on pull requests, releases, etc.
   # pull_request:
   #   branches:
   #     - main
 
 env:
-  AWS_REGION: your-aws-region # e.g., us-east-1
-  ECR_REPOSITORY: your-backend-repo-name # The name of your ECR repository
+  AWS_REGION: ${{ env.AWS_REGION_ECR }} # e.g., us-east-1
+  ECR_REPOSITORY: ${{ env.AWS_ECR_REPOSITORY }} # The name of your ECR repository
   IMAGE_TAG: ${{ github.sha }} # Use commit SHA for unique image tags, or 'latest'
 
 jobs:
