@@ -1,0 +1,83 @@
+name: Deploy to EC2
+
+on:
+  # Enable manual triggering
+  workflow_dispatch:
+  # # Optional: also trigger on push to main
+  # push:
+  #   branches: [main]
+
+# Use a local runner for testing
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Create SSH key file
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USERNAME: ${{ secrets.EC2_USERNAME }}
+        run: |
+          # Create SSH directory
+          mkdir -p ~/.ssh
+          
+          # Save the private key to a file
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/ec2_key.pem
+          chmod 600 ~/.ssh/ec2_key.pem
+          
+          # Add host to known hosts
+          ssh-keyscan -H $EC2_HOST >> ~/.ssh/known_hosts
+          
+          # Display info for debugging (masked)
+          echo "Deploying to EC2 host: ${EC2_HOST:0:4}***"
+          echo "Using username: $EC2_USERNAME"
+
+      - name: Debug SSH key format
+        run: |
+          # Don't print the actual key, just check beginning format
+          echo "First line of key: $(echo "$SSH_PRIVATE_KEY" | head -n 1)"
+          # Check if key is properly formatted with line breaks
+          if ! echo "$SSH_PRIVATE_KEY" | grep -q "BEGIN"; then
+            echo "SSH key appears to be malformed - missing BEGIN line"
+          fi
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH }}
+
+      - name: Deploy to EC2
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USERNAME: ${{ secrets.EC2_USERNAME }}
+        run: |
+          # Test connection first with verbose logging
+          echo "Testing SSH connection..."
+          ssh -v -o StrictHostKeyChecking=no -i ~/.ssh/ec2_key.pem $EC2_USERNAME@$EC2_HOST "echo 'Connection successful'"
+          
+          # If test succeeds, proceed with deployment
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/ec2_key.pem $EC2_USERNAME@$EC2_HOST << 'ENDSSH'
+            # Correct path - make sure this matches your actual directory structure
+            cd ~/senya-backend || cd /home/$EC2_USERNAME/senya-backend
+            
+            echo "Current directory: $(pwd)"
+            git pull origin main
+            
+            # Uncomment and adjust the following as needed
+            # docker-compose down
+            # docker-compose up -d
+            # or
+            if [ -f "./start.sh" ]; then
+              chmod +x ./start.sh
+              ./start.sh
+            fi
+            
+            echo "Deployment completed"
+          ENDSSH
+
+      - name: Cleanup sensitive files
+        if: always()
+        run: |
+          rm -f ~/.ssh/ec2_key.pem
+          echo "Credentials cleaned up"
+

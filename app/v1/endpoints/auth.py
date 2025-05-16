@@ -48,9 +48,6 @@ async def login(login_data: LoginRequest, db: Session = Depends(get_db)):
 
     res = db.execute(text(query), {"email": login_data.email}).first()
 
-    logger.debug(f"res: {res}")
-    logger.debug(f"res.dict: {row2dict(res)}")
-
     res_dict = row2dict(res)
     if (
         not res_dict
@@ -106,7 +103,6 @@ async def register(register_data: RegisterRequest, db: Session = Depends(get_db)
         text(check_query), {"email": register_data.email, "username": register_data.username}
     ).first()
 
-    logger.debug(f"/register existing_user: {existing_user}")
 
     if existing_user:
         raise HTTPException(status_code=400, detail="Email or username already registered")
@@ -136,8 +132,7 @@ async def register(register_data: RegisterRequest, db: Session = Depends(get_db)
             },
         ).one()
 
-        logger.debug(f"register_data.username: {register_data.username}")
-        logger.debug(f"user_id: {user_id}")
+
         # create a default root folder for the user
         create_default_folder(db, register_data.username, user_id)
 
@@ -145,9 +140,8 @@ async def register(register_data: RegisterRequest, db: Session = Depends(get_db)
         db.commit()
 
         # get the user data from db response
-        logger.debug(f"res: {res}")
         user_data = row2dict(res)
-        logger.debug(f"user_data: {user_data}")
+
         # create access token
         access_token = create_access_token(
             data={

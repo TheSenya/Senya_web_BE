@@ -1,8 +1,12 @@
 from email import contentmanager
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel
 from datetime import datetime, date
 from typing import List, Dict
 import uuid
+
+# TODO: 
+# - turn this into a note_fodler schema file
+
 class NoteFolder(BaseModel):
     id: int
     user_id: uuid.UUID
@@ -17,18 +21,11 @@ class Note(BaseModel):
     id: int
     user_id: str
     name: str
-    content: Dict | None = None
+    content: Dict
     folder_id: int
 
     class Config:
         from_attributes = True 
-
-    @field_validator('user_id', mode='before')
-    def convert_uuid_to_str(cls, v):
-        import uuid
-        if isinstance(v, uuid.UUID):
-            return str(v)
-        return v
 
 class NoteFolderCreate(BaseModel):
     name: str
@@ -46,10 +43,10 @@ class NoteFolderDelete(BaseModel):
     user_id: str
 
 class NoteCreate(BaseModel):
-    title: str
-    format: str
-    content: str | None = None
-    folder_id: int
+    user_id: str
+    name: str
+    content: Dict  
+    folder_id: int  
     
 class NoteEdit(BaseModel):
     id: int

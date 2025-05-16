@@ -24,11 +24,16 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y awscli && apt-get install -y\
     gcc \
     postgresql-client \
+    libpq-dev \
+    python3-dev \
     && rm -rf /var/lib/apt/lists/*
 # ^ Update package list and install required system packages:
 #   - apt-get update: Updates the package index files to get latest package info
 #   - apt-get install -y: Installs packages without requiring confirmation (-y flag)
 #   - gcc: GNU C Compiler, needed for compiling C extensions for Python packages ex. psycopg2 or django-cors-headers
+#   - postgresql-client: PostgreSQL client tools
+#   - libpq-dev: PostgreSQL development files
+#   - python3-dev: Python development files
 # Then clean up to reduce image size:
 #   - rm -rf /var/lib/apt/lists/*: This removes the package lists downloaded by apt-get update
 #     This is done to reduce the size of the Docker image, as package lists can be quite large

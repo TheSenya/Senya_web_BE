@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  # Database service
+  db:
+    image: postgres:15-alpine
+    container_name: senya_db_prod
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups:/backups
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Migration service
+  migrations:
+    build: .
+    container_name: senya_migrations
+    volumes:
+      - .:/app
+      - ./backups:/backups
+    environment:
+      - ENVIRONMENT=production
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - DATABASE_HOST=db
+      - DATABASE_PORT=5432
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["./migrate.sh"]
+    restart: "no"
+
+  # Backend service
+  backend:
+    build: .
+    container_name: senya_backend_prod
+    volumes:
+      - .:/app
+      - ./cert:/cert:ro
+    ports:
+      - "443:443"
+    environment:
+      - ENVIRONMENT=production
+      - DEBUG=0
+      - SECRET_KEY=${SECRET_KEY}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - DATABASE_HOST=db
+      - DATABASE_PORT=5432
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    command: ["./start.sh"]
+
+volumes:
+  postgres_data: 

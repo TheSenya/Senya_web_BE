@@ -2,14 +2,15 @@ name: CI Pipeline
 
 # Trigger the workflow on push and pull requests to dev and main branches.
 on:
-  push:
-    branches:
-      - dev
-      - main
-  pull_request:
-    branches:
-      - dev
-      - main
+  workflow_dispatch:
+  # push:
+  #   branches:
+  #     - dev
+  #     - main
+  # pull_request:
+  #   branches:
+  #     - dev
+  #     - main
 
 jobs:
   build-and-test:

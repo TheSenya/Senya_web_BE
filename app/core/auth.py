@@ -2,9 +2,10 @@ from datetime import datetime, timedelta
 from functools import wraps
 from typing import Optional
 import json
-
-from fastapi import Request, HTTPException, Depends
+import inspect  # <-- To check if a function is a coroutine
+from fastapi import Request, HTTPException, Depends, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
+from fastapi.concurrency import run_in_threadpool  # <-- To run sync endpoints asynchronously
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from jose import JWTError, jwt, ExpiredSignatureError
@@ -15,7 +16,9 @@ from app.config.constants import ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPI
 from app.config.logger import logger
 from app.core.helper import row2dict
 from app.schemas.user import User
+from app.core.websocket_super_simple import WebSocketManager
 
+ws_manager = WebSocketManager()
 
 # get the current user from the request
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> User | None:
@@ -26,8 +29,8 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> User | 
         query = "SELECT * FROM users WHERE id = :user_id"
         user = db.execute(text(query), {"user_id": user_id}).first()
 
-        logger.debug(f"user: {user}")
-        logger.debug(f"User.model_validate(user): {User.model_validate(user)}")
+        #logger.debug(f"user: {user}")
+        #logger.debug(f"User.model_validate(user): {User.model_validate(user)}")
 
         return User.model_validate(user)
     
@@ -125,17 +128,11 @@ async def verify_tokens(
     if not refresh_token:
         raise HTTPException(status_code=401, detail="No refresh token provided")
 
-    logger.debug(f"DISPLAY TOKENS")
-    logger.debug(f"access_token: {access_token}")
-    logger.debug(f"refresh_token: {refresh_token}")
-
     # First try to verify access token
     try:
         payload = jwt.decode(
             access_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
-
-        logger.debug(f"payload : {payload}")
 
         if payload.get("token_type") != "access":
             raise HTTPException(
@@ -173,60 +170,277 @@ async def verify_tokens(
 
 
 def token_auth():
-    """Decorator to enforce token validation and refresh logic."""
-
+    """
+    Decorator to enforce token validation and refresh logic.
+    This decorator extracts the access token and refresh token, validates them,
+    and if necessary refreshes the access token. It also attaches a new access token
+    to the JSONResponse if a refresh occurred.
+    
+    This implementation supports both asynchronous and synchronous endpoint functions.
+    If the endpoint is synchronous, it is executed in a thread pool to avoid blocking the event loop.
+    """
     def decorator(func):
         @wraps(func)
         async def wrapper(request: Request, *args, **kwargs):
-
-            # set temp variables
-            user_id = None
-            access_token = None
-            new_access_token = None
-
-            # Extract tokens
-            refresh_token = request.cookies.get("refresh_token")
+            # Store the original access token from the Authorization header.
             auth_header = request.headers.get("Authorization")
-
-            # Get access token from header
+            original_access_token = None
+            new_access_token = None
+            
+            # Extract tokens from request.
             if auth_header and auth_header.startswith("Bearer "):
-                access_token = auth_header.split(" ")[1]
-
-            logger.debug(f"token_auth access_token: {access_token}")
-
-            # verify tokens
-            access_token, user_id = await verify_tokens(access_token, refresh_token)
-
-            logger.debug(f"access token verified: {access_token}")
-            logger.debug(f"user_id: {user_id}")
-
-            # Check if the decorated function expects a request parameter
-            logger.debug(f"func.__code__.co_varnames: {func.__code__.co_varnames}")
-
+                original_access_token = auth_header.split(" ")[1]
+            
+            # Get the refresh token from cookies.
+            refresh_token = request.cookies.get("refresh_token")
+            
+            #logger.debug(f"token_auth original_access_token: {original_access_token}")
+            #logger.debug(f"token_auth refresh_token: {refresh_token}")
+            
+            # Verify the tokens. The verify_tokens() function returns a tuple:
+            # (access_token, user_id). If the access token was refreshed, the returned
+            # access_token will be different from the original.
+            verified_access_token, user_id = await verify_tokens(original_access_token, refresh_token)
+            
+            # Check if the token was refreshed.
+            if original_access_token != verified_access_token:
+                new_access_token = verified_access_token
+            
+            #logger.debug(f"Verified access token: {verified_access_token}")
+            #logger.debug(f"user_id: {user_id}")
+            
+            # Make sure that the endpoint function receives the request object if it expects it.
             if "request" in func.__code__.co_varnames:
                 kwargs["request"] = request
-
-            request.state.user = {
-                "id": user_id,
-            }
-
-            # Execute endpoint
-            response = await func(*args, **kwargs)
-
-            # Attach new access token to response (if generated)
-            if "new_access_token" in kwargs or new_access_token:
+            
+            # Attach the user information to the request so that endpoint functions can use it.
+            request.state.user = {"id": user_id}
+            
+            # Execute the endpoint function.
+            #
+            # If func is a coroutine (i.e. asynchronous), simply await it.
+            # Otherwise, wrap it in run_in_threadpool so that it does not block the event loop.
+            if inspect.iscoroutinefunction(func):
+                response = await func(*args, **kwargs)
+            else:
+                response = await run_in_threadpool(func, *args, **kwargs)
+            
+            # If a new access token was generated (i.e. the token was refreshed) and the response
+            # is a JSONResponse, attach the new access token to the response JSON.
+            if new_access_token:
                 if isinstance(response, JSONResponse):
+                    # Decode the current response body so we can add the new token.
                     response_data = json.loads(bytes(response.body).decode())
-
-                    if new_access_token:
-                        response_data["new_access_token"] = new_access_token
-                    else:
-                        response_data["new_access_token"] = kwargs["new_access_token"]
-
-                    return JSONResponse(content=response_data)
-
+                    response_data["new_access_token"] = new_access_token
+                    response = JSONResponse(content=response_data)
+            
             return response
 
         return wrapper
 
+    return decorator
+
+# async def token_auth_ws(websocket: WebSocket) -> tuple[WebSocket, str]:
+
+#     user_id = ''
+
+#     logger.info(f"--------------------------------------: {websocket}")
+#     try:
+
+#         '''
+#             1. check if access_token exists
+#             2. validate access token
+#                 2.1 tell user to validate and close websocket
+#                 2.1 continue
+#         '''
+
+#         temp_user_id = 'temp_user'
+
+#         await ws_manager.connect(websocket, temp_user_id)
+
+#         # get auth message with access_token
+#         auth_msg = await websocket.receive_text()
+#         auth_msg = json.loads(auth_msg)
+
+#         logger.debug('auth message', auth_msg)
+
+#         access_token = ''
+
+#         if auth_msg and auth_msg.get('type') == 'authenticate' and auth_msg.get('token') is not None:
+#             access_token = auth_msg.get('token')
+#         else: 
+#             await ws_manager.disconnect(temp_user_id)
+#             raise
+
+#         try:
+#             payload = jwt.decode(
+#                 access_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+#             )
+
+#             if payload.get("token_type") != "access":
+#                 raise HTTPException(
+#                     status_code=401, detail="Invalid access token type"
+#                 )
+
+#             user_id = str(payload.get("sub"))
+
+#             if not user_id:
+#                 raise HTTPException(
+#                     status_code=401, detail="Access token does not contain user id"
+#                 )
+
+#         except Exception as e:
+#             await ws_manager.disconnect(temp_user_id)
+#             pass
+
+    
+        
+#     except Exception as e:
+#         # Close websocket connection if authentication fails
+#         await websocket.close(code=1008, reason="Authentication failed")
+#         raise
+                
+#     return websocket, user_id
+
+def token_auth_ws():
+    """Decorator for WebSocket authentication"""
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(websocket: WebSocket, *args, **kwargs):
+            # Accept the connection first
+            logger.info(f"--------------------------------------: {websocket}")
+            logger.info(f"token_auth_ws: {websocket.cookies}")
+            temp_user_id = 'temp_user'
+
+            await ws_manager.connect(websocket, temp_user_id)
+            
+            try:
+                # Get auth message with access_token
+                auth_msg = await websocket.receive_text()
+                auth_msg = json.loads(auth_msg)
+                
+                logger.debug('auth message', auth_msg)
+                
+                # Validate auth message
+                if not auth_msg or auth_msg.get('type') != 'authenticate' or auth_msg.get('token') is None:
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": "Authentication required"
+                    })
+                    await websocket.close(code=1008, reason="Authentication failed")
+                    return
+                    
+                access_token = auth_msg.get('token')
+                
+                try:
+                    # Decode and validate token
+                    payload = jwt.decode(
+                        access_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+                    )
+                    
+                    if payload.get("token_type") != "access":
+                        await websocket.send_json({
+                            "type": "error",
+                            "message": "Invalid access token type"
+                        })
+                        await websocket.close(code=1008)
+                        return
+                        
+                    user_id = str(payload.get("sub"))
+                    
+                    if not user_id:
+                        await websocket.send_json({
+                            "type": "error",
+                            "message": "Access token does not contain user id"
+                        })
+                        await websocket.close(code=1008)
+                        return
+                    
+                    # Successfully authenticated - run the handler with the user_id
+                    return await func(websocket, user_id=user_id, *args, **kwargs)
+                    
+                except JWTError:
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": "Invalid or expired token"
+                    })
+                    await websocket.close(code=1008)
+                    return
+                    
+            except WebSocketDisconnect:
+                logger.info("Client disconnected during authentication")
+            except Exception as e:
+                logger.error(f"Authentication error: {str(e)}")
+                await websocket.close(code=1008)
+                
+        return wrapper
+    
+    return decorator
+
+def token_auth_ws_v2():
+    """Decorator for WebSocket authentication"""
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(websocket: WebSocket, *args, **kwargs):
+            # accept websocket connection
+            logger.info(f"token_auth_ws_v2 start")
+            temp_user_id = 'temp_user'
+
+            await ws_manager.connect(websocket, temp_user_id)
+
+            # get first ws message which contains the access_token
+            try:
+                auth_msg = await websocket.receive_text()
+                auth_msg = json.loads(auth_msg)
+
+                logger.debug(f'auth message: {auth_msg}')
+
+                access_token = auth_msg.get('token')
+                logger.debug(f'access_token: {access_token}')
+                
+                # validate access_token
+                try:
+                    payload = jwt.decode(
+                        access_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+                    )   
+
+                    if payload.get("token_type") != "access":
+                        await websocket.send_json({
+                            "type": "error",
+                            "message": "Invalid access token type"
+                        })
+                        await ws_manager.disconnect(temp_user_id, websocket)
+                        return
+                    
+                    user_id = str(payload.get("sub"))
+                    logger.debug(f'user_id: {user_id}')
+                    
+                    # Check if the function already has a user_id parameter
+                    sig = inspect.signature(func)
+                    has_user_id_param = 'user_id' in sig.parameters
+                    
+                    # If the endpoint already expects a user_id parameter, modify kwargs
+                    if has_user_id_param:
+                        # Override kwargs with the authenticated user_id
+                        kwargs['user_id'] = user_id
+                    
+                    # if access_token is valid, run the handler
+                    return await func(websocket, *args, **kwargs)
+                
+                except JWTError as e:
+                    logger.error(f"JWT validation error: {str(e)}")
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": "Invalid or expired token"
+                    })
+                    await ws_manager.disconnect(temp_user_id, websocket)
+                    return
+
+            except Exception as e:
+                logger.error(f"Authentication error: {str(e)}")
+                await ws_manager.disconnect(temp_user_id, websocket)
+                return
+    
+        return wrapper
+    
     return decorator

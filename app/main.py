@@ -29,6 +29,7 @@ async def read_root():
 async def health():
     return {"status": "healthy"}
 
+
 # This code configures CORS policies for your FastAPI backend. Here's a detailed breakdown:
 # What is CORS?
 # CORS is a security feature implemented by web browsers
