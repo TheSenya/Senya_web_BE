@@ -1,75 +1,64 @@
 name: Build and Push Backend to ECR
 
 on:
+  workflow_dispatch: # for testing purposes
   push:
     branches:
-      - main # Or your primary deployment branch, e.g., master, develop
-      - workflow_dispatch
-  # You can also trigger on pull requests, releases, etc.
-  # pull_request:
-  #   branches:
-  #     - main
+      - main # Or your primary deployment branch
 
 env:
-  AWS_REGION: your-aws-region # e.g., us-east-1
-  ECR_REPOSITORY: your-backend-repo-name # The name of your ECR repository
-  IMAGE_TAG: ${{ github.sha }} # Use commit SHA for unique image tags, or 'latest'
+  AWS_REGION: us-east-1 # e.g., us-east-1. Make sure this is your target ECR region.
+  ECR_REPOSITORY: senyaweb/be # Your ECR repository name (e.g., my-backend-app)
+  IMAGE_TAG: ${{ github.sha }}
 
 jobs:
   build-and-push-image:
     name: Build and Push to ECR
     runs-on: ubuntu-latest # Use the latest Ubuntu runner
+    environment: prod # Targets the 'prod' GitHub Environment for secrets and rules
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4 # Always use the latest major version
+        uses: actions/checkout@v4
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4 # Or latest version
+        uses: aws-actions/configure-aws-credentials@v4
         with:
+          # These secrets should ideally be configured in your 'prod' GitHub Environment
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Log in to Amazon ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2 # Or latest version
+        uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build, tag, and push image to Amazon ECR
         id: build-image
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        # You can use Docker's build-push-action or execute Docker commands directly
-        # Option 1: Using docker/build-push-action (recommended for simplicity)
-        uses: docker/build-push-action@v5 # Or latest version
+          # Use the ECR registry URI output from the login step
+          ECR_REGISTRY_STEP_OUTPUT: ${{ steps.login-ecr.outputs.registry }}
+        uses: docker/build-push-action@v5
         with:
-          context: . # Path to your Dockerfile and build context (e.g., ./backend)
-          file: ./Dockerfile # Path to your Dockerfile, if not at the root of context
+          context: . # Path to your Dockerfile and build context
+          file: ./Dockerfile # Path to your Dockerfile
           push: true
           tags: |
-            ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
-            ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest # Optional: also tag as latest
-
-        # Option 2: Using Docker CLI commands (more explicit control)
-        # run: |
-        #   docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f ./Dockerfile .
-        #   docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-        #   # Optionally push a 'latest' tag
-        #   docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
-        #   docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+            ${{ env.ECR_REGISTRY_STEP_OUTPUT }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+            ${{ env.ECR_REGISTRY_STEP_OUTPUT }}/${{ env.ECR_REPOSITORY }}:latest
+          # Adding build arguments example (if needed)
+          # build-args: |
+          #   MY_BUILD_ARG=some_value
 
       - name: Output Image URL
         run: echo "Image pushed to ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}"
 
-      # Optional: Add a step to trigger a deployment on ECS or App Runner if needed
+      # Optional: Deploy to ECS/App Runner
       # - name: Deploy to ECS
       #   if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       #   uses: aws-actions/amazon-ecs-deploy-task-definition@v1
       #   with:
-      #     task-definition: your-ecs-task-definition-family # e.g., my-backend-task
-      #     service: your-ecs-service-name # e.g., my-backend-service
-      #     cluster: your-ecs-cluster-name # e.g., my-cluster
+      #     task-definition: your-ecs-task-definition-family
+      #     service: your-ecs-service-name
+      #     cluster: your-ecs-cluster-name
       #     wait-for-service-stability: true
-      #     # You might need to update the task definition with the new image URI
-      #     # This can be done by preparing a new task definition JSON file
-      #     # or using tools to update it dynamically.

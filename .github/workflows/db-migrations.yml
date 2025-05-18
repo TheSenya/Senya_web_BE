@@ -1,0 +1,56 @@
+name: Database Migrations
+
+on:
+  workflow_dispatch:  # Manual trigger
+  push:
+    branches:
+      - main
+    paths:
+      - 'migrations/**'
+      - 'app/models/**'
+      - 'alembic.ini'
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    environment: production  # This ensures we use production secrets
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run database migrations
+        env:
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          DATABASE_HOST: ${{ secrets.DATABASE_HOST }}
+          DATABASE_PORT: ${{ secrets.DATABASE_PORT }}
+        run: |
+          # Check if there are any pending migrations
+          if alembic current | grep -q "head"; then
+            echo "No pending migrations"
+            exit 0
+          fi
+          
+          # Run migrations
+          alembic upgrade head
+          
+          # Verify migration success
+          if [ $? -eq 0 ]; then
+            echo "Migrations completed successfully"
+          else
+            echo "Migration failed"
+            exit 1
+          fi 
