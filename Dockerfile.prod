@@ -65,4 +65,4 @@ EXPOSE 8000
 #   - "--host 0.0.0.0" makes the server accessible externally by any network interface on the host machine
 #   - "--port 8000" specifies the port on which the server will listen for incoming connections
 
-ENTRYPOINT ["./start.dev.sh"]
+ENTRYPOINT ["./start.prod.sh"]

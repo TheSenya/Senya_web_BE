@@ -65,4 +65,15 @@ EXPOSE 8000
 #   - "--host 0.0.0.0" makes the server accessible externally by any network interface on the host machine
 #   - "--port 8000" specifies the port on which the server will listen for incoming connections
 
-ENTRYPOINT ["./start.dev.sh"]
+# Create directory for certificates
+RUN mkdir -p /app/cert
+
+# Copy start script and make it executable
+COPY start.sh .
+RUN chmod +x start.sh
+
+# Set default paths for SSL certificates (for local development)
+ENV SSL_CERT_PATH=/cert/localhost+1.pem
+ENV SSL_KEY_PATH=/cert/localhost+1-key.pem
+
+ENTRYPOINT ["./start.sh"]
