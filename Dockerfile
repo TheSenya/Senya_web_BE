@@ -64,5 +64,4 @@ EXPOSE 8000
 #     "app" is the name of the FastAPI app object defined in that module (in the main.py file)
 #   - "--host 0.0.0.0" makes the server accessible externally by any network interface on the host machine
 #   - "--port 8000" specifies the port on which the server will listen for incoming connections
-
 ENTRYPOINT ["./start.prod.sh"]
