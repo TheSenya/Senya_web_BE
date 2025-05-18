@@ -39,7 +39,7 @@ services:
       migrations:
         condition: service_completed_successfully
     restart: unless-stopped
-    command: ["./start.sh"]
+    command: ["./start.prod.sh"]
 
 volumes:
   postgres_data: 
