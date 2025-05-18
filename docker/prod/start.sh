@@ -14,4 +14,4 @@ echo "Running database migrations..."
 alembic upgrade head
 
 # Start the application in production mode
-exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4 --log-level info 
+exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4 --log-level info

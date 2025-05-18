@@ -34,4 +34,4 @@ echo "Running database migrations..."
 alembic upgrade head
 
 # Start the application with hot-reloading
-exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --log-level debug 
+exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --log-level debug
