@@ -10,4 +10,4 @@ alembic upgrade head
 
 # Start the application
 echo "Starting application in production mode..."
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4 
+uvicorn app.main:app --host 0.0.0.0 --port 8000

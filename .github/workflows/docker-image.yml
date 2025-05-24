@@ -41,7 +41,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: . # Path to your Dockerfile and build context
-          file: ./docker/prod/Dockerfile # Updated path to production Dockerfile
+          file: ./Dockerfile.prod # Updated path to production Dockerfile
           push: true
           tags: |
             ${{ env.ECR_REGISTRY_STEP_OUTPUT }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}

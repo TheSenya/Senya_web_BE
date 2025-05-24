@@ -13,6 +13,9 @@ logger.info("Starting application...")
 
 app = FastAPI(title=settings.APP_NAME, debug=settings.DEBUG, openapi_url=f"{settings.API_V1_STR}/openapi.json")
 
+
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
@@ -21,14 +24,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/")
-async def read_root():
-    return {"message": "Hello, World!"}
-
 @app.get("/health")
 async def health():
     return {"status": "healthy"}
 
+@app.get("/")
+async def read_root():
+    return {"message": "Hello, World!"}
 
 # This code configures CORS policies for your FastAPI backend. Here's a detailed breakdown:
 # What is CORS?
