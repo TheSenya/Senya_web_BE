@@ -5,7 +5,10 @@ from app.core.config import settings
 
 
 # Build the database URL
-DATABASE_URL = f"postgresql://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}@{settings.DATABASE_HOST}:{settings.DATABASE_PORT}/{settings.POSTGRES_DB}"
+if settings.ENVIRONMENT == "production":
+    DATABASE_URL = settings.DATABASE_URL
+else:
+    DATABASE_URL = f"postgresql://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}@{settings.DATABASE_HOST}:{settings.DATABASE_PORT}/{settings.POSTGRES_DB}"
 
 # Create database engine using connection URL from settings
 engine = create_engine(DATABASE_URL)

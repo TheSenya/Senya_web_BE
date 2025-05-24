@@ -3,7 +3,11 @@ from functools import lru_cache
 from pydantic import field_validator
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")   
+    model_config = SettingsConfigDict(
+        env_file=".env", 
+        env_file_encoding="utf-8",
+        extra="ignore"  # This will ignore extra fields
+    )   
 
     # App settings  
     APP_NAME: str = "Senya Web Backend"
@@ -27,6 +31,8 @@ class Settings(BaseSettings):
 
     COOKIE_SAMESITE: str
     COOKIE_SECURE: bool | str
+
+    ENVIRONMENT: str
 
     @field_validator("CORS_ORIGINS", mode="before")
     def assemble_cors_origins(cls, v):

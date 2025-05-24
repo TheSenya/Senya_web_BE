@@ -13,5 +13,5 @@ fi
 echo "Running database migrations..."
 alembic upgrade head
 
-# Start the application in production mode
-exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4 --log-level info
+# Start the application without SSL (Nginx will handle SSL termination)
+exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --log-level "${UVICORN_LOG_LEVEL:-debug}"
