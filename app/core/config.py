@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     DATABASE_HOST: str
     DATABASE_PORT: str
 
-    FRONTEND_URL: str 
+    # FRONTEND_URL: str 
     CORS_ORIGINS: str | list[str]
 
     COOKIE_SAMESITE: str
