@@ -74,6 +74,7 @@ async def get_user_folders(request: Request, db: Session = Depends(get_db)):
     #logger.debug(f"get user folders validated_folders: {validated_folders}")
 
 
+
     #logger.debug(f"get user folders res DICT: {rows2dict(res)}")
 
     return rows2dict(res)
@@ -114,6 +115,7 @@ async def create_note_folder(request: Request, folder: NoteFolderCreate, db: Ses
     
     res = db.execute(text(query), {"user_id": user_id, "name": folder.name, "parent_id": folder.parent_id, "is_root": False}).one()
 
+    print(f"create_note_folder res: {res}")
 
     new_folder = row2dict(res)
 
@@ -167,6 +169,8 @@ async def update_note_folder(request: Request, folder: NoteFolderEdit, db: Sessi
 @token_auth()
 async def delete_note_folder(request: Request, folder_id: int, db: Session = Depends(get_db)):
 
+    print(f"delete_note_folder request: {request}")
+
     # check if user_id of folder matches the current user's user_id
     user = get_current_user(request, db)
 
@@ -174,9 +178,12 @@ async def delete_note_folder(request: Request, folder_id: int, db: Session = Dep
         raise HTTPException(status_code=401, detail="User not found")
     
     user_id = user.id
+
+    print(f"delete_note_folder user_id: {user_id}")
+    print(f"delete_note_folder folder_id: {folder_id}")
     
     # check if folder exists
-    if folder_id is not None:   
+    if folder_id is not None:
         query = """
             SELECT * FROM note_folder WHERE id = :id AND user_id = :user_id
         """

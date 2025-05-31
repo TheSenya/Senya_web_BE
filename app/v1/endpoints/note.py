@@ -33,34 +33,34 @@ def get_file_formats():
 # Note websocket
 # ------------------------------------------------------------------------------------------------
 
-@router.websocket("/ws/{note_id}")
-@token_auth_ws_v2()
-async def note_websocket(websocket: WebSocket, note_id: str, user_id: str = '', db: Session = Depends(get_db)):
-    """WebSocket endpoint for note collaboration with authentication"""
-    logger.info(f"--------------------------------------: WEBSOCKET ENDPOINT")
-    logger.info(f"WebSocket connection established for note_id: {note_id}, user_id: {user_id}")
+# @router.websocket("/ws/{note_id}")
+# @token_auth_ws_v2()
+# async def note_websocket(websocket: WebSocket, note_id: str, user_id: str = '', db: Session = Depends(get_db)):
+#     """WebSocket endpoint for note collaboration with authentication"""
+#     logger.info(f"--------------------------------------: WEBSOCKET ENDPOINT")
+#     logger.info(f"WebSocket connection established for note_id: {note_id}, user_id: {user_id}")
 
-    try:
-        while True:
-            data = await websocket.receive_text()
-            logger.info(f"Received data from user {user_id}: {data}")
+#     try:
+#         while True:
+#             data = await websocket.receive_text()
+#             logger.info(f"Received data from user {user_id}: {data}")
             
-            # Send response as JSON instead of plain text for better client handling
-            await websocket.send_json({
-                "type": "message",
-                "content": data,
-                "note_id": note_id,
-                "timestamp": datetime.now().isoformat()
-            })
-    except WebSocketDisconnect:
-        logger.info(f"Client {user_id} disconnected")
-        await ws_manager.disconnect(user_id, websocket)
-    except Exception as e:
-        logger.error(f"Error in WebSocket communication: {e}")
-        try:
-            await ws_manager.disconnect(user_id, websocket)
-        except:
-            pass
+#             # Send response as JSON instead of plain text for better client handling
+#             await websocket.send_json({
+#                 "type": "message",
+#                 "content": data,
+#                 "note_id": note_id,
+#                 "timestamp": datetime.now().isoformat()
+#             })
+#     except WebSocketDisconnect:
+#         logger.info(f"Client {user_id} disconnected")
+#         await ws_manager.disconnect(user_id, websocket)
+#     except Exception as e:
+#         logger.error(f"Error in WebSocket communication: {e}")
+#         try:
+#             await ws_manager.disconnect(user_id, websocket)
+#         except:
+#             pass
 
 # ------------------------------------------------------------------------------------------------
 # Note endpoints

@@ -15,6 +15,7 @@ load_dotenv()
 config = context.config
 
 # Set sqlalchemy.url in alembic.ini from environment variables
+
 config.set_main_option('sqlalchemy.url', settings.DATABASE_URL)
 
 # Interpret the config file for Python logging.

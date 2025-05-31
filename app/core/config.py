@@ -1,6 +1,7 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 from pydantic import field_validator
+from typing import Union
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -14,7 +15,7 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     API_V1_STR: str = "/api/v1"
     SECRET_KEY: str
-    ACCESS_TOKEN_EXPIRE_MINUTES: int | str = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: Union[int, str] = "30"
     ALGORITHM: str = "HS256"  # Adding this for JWT encoding
     LOG_LEVEL: str = "INFO"
 
@@ -27,10 +28,10 @@ class Settings(BaseSettings):
     DATABASE_PORT: str
 
     # FRONTEND_URL: str 
-    CORS_ORIGINS: str | list[str]
+    CORS_ORIGINS: Union[str, list[str]]
 
     COOKIE_SAMESITE: str
-    COOKIE_SECURE: bool | str
+    COOKIE_SECURE: Union[bool, str]
 
     ENVIRONMENT: str
 
@@ -47,8 +48,10 @@ class Settings(BaseSettings):
     @field_validator("DEBUG", "COOKIE_SECURE", mode="before")
     def parse_bool(cls, v):
         if isinstance(v, str):
-            return bool(v.lower())
-        return v
+            if v.lower() in ('false', '0', 'no', 'off', ''): # Add '' if empty string should be False
+                return False
+            return True
+        return bool(v) # Ensure any other type is converted to bool
 
     @field_validator("ACCESS_TOKEN_EXPIRE_MINUTES", mode="before")
     def parse_int(cls, v):
