@@ -1,1 +1,7 @@
 Generic single-database configuration.
+
+// to apply alembic db migrations
+alembic upgrade head
+
+// to create a new alembic revision
+alembic revision -m "msg" --autogenerate

@@ -144,7 +144,7 @@ async def create_note(request: Request, note: NoteCreate, db: Session = Depends(
     res = db.execute(text(query), {"user_id": user_id, "name": note.title, "folder_id": note.folder_id, "content": json.dumps(structured_content), "format": note.format}).one()
 
     # insert note into database
-    return row2dict(res)
+    return Note.model_validate(res)
 
 
 @router.put("/", response_model=NoteEdit)

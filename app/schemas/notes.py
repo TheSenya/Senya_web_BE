@@ -4,21 +4,21 @@ from datetime import datetime, date
 from typing import List, Dict
 import uuid
 class NoteFolder(BaseModel):
-    id: int
+    id: uuid.UUID
     user_id: uuid.UUID
     name: str
-    parent_id: int | None
+    parent_id: uuid.UUID | None
     is_root: bool
 
     class Config:
         from_attributes = True 
 
 class Note(BaseModel):
-    id: int
+    id: uuid.UUID
     user_id: str
     name: str
     content: Dict | None = None
-    folder_id: int
+    folder_id: uuid.UUID
 
     class Config:
         from_attributes = True 
@@ -33,31 +33,31 @@ class Note(BaseModel):
 class NoteFolderCreate(BaseModel):
     name: str
     user_id: str
-    parent_id: int | None = None
+    parent_id: uuid.UUID | None = None
 
 class NoteFolderEdit(BaseModel):
-    id: int
+    id: uuid.UUID
     user_id: str
     name: str
-    parent_id: int
+    parent_id: uuid.UUID
 
 class NoteFolderDelete(BaseModel):
-    id: int
+    id: uuid.UUID
     user_id: str
 
 class NoteCreate(BaseModel):
     title: str
     format: str
     content: str | None = None
-    folder_id: int
+    folder_id: uuid.UUID
     
 class NoteEdit(BaseModel):
-    id: int
+    id: uuid.UUID
     user_id: str
     name: str
     content: Dict 
-    folder_id: int 
+    folder_id: uuid.UUID 
 
 class NoteDelete(BaseModel):
-    id: int
+    id: uuid.UUID
     user_id: str

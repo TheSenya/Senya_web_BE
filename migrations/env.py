@@ -6,6 +6,8 @@ from alembic import context
 from app.core.config import settings
 from app.models import Base  # Import all models
 from dotenv import load_dotenv
+import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 # Load environment variables
 load_dotenv()
@@ -16,6 +18,7 @@ config = context.config
 
 # Set sqlalchemy.url in alembic.ini from environment variables
 
+# for local development, we need to specify host as localhost
 config.set_main_option('sqlalchemy.url', settings.DATABASE_URL)
 
 # Interpret the config file for Python logging.
@@ -52,7 +55,7 @@ def run_migrations_online() -> None:
     with connectable.connect() as connection:
         context.configure(
             connection=connection,
-            target_metadata=target_metadata
+            target_metadata=target_metadata,
         )
 
         with context.begin_transaction():

@@ -118,3 +118,7 @@ base64 -i localhost+1.pem > cert.txt
 
 # make start.sh executable
 chmod +x start.sh
+
+
+// if alembic migrations fails when handling uuid changes add this 
+// postgresql_using='id::uuid'

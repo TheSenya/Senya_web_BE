@@ -27,7 +27,8 @@ services:
       - DATABASE_PORT=${DATABASE_PORT}
     # Ensure database is started before backend
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     # Restart policy - container will restart unless manually stopped
     restart: unless-stopped
 
