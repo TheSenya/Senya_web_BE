@@ -50,13 +50,12 @@ class NoteCreate(BaseModel):
     format: str
     content: str | None = None
     folder_id: uuid.UUID
-    
+
 class NoteEdit(BaseModel):
-    id: uuid.UUID
-    user_id: str
-    name: str
-    content: Dict 
-    folder_id: uuid.UUID 
+    title: str | None = None
+    content: str | None = None
+    format: str | None = None
+    folder_id: uuid.UUID | None = None
 
 class NoteDelete(BaseModel):
     id: uuid.UUID

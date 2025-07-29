@@ -1,8 +1,8 @@
 import token
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, Cookie, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, Cookie, WebSocketDisconnect, Body
 from sqlalchemy.orm import Session
 from sqlalchemy import event, text
-from typing import List
+from typing import List, Optional
 import json
 from app.core.database import get_db
 from app.core.helper import row2dict, rows2dict
@@ -66,10 +66,10 @@ def get_file_formats():
 # Note endpoints
 # ------------------------------------------------------------------------------------------------
 
-# get all notes for a user
-@router.get("/{user_id}")
+# get all notes for a user (not not content)
+@router.get("/")
 @token_auth()
-def get_user_notes(request: Request, user_id: str, db: Session = Depends(get_db)):
+def get_user_notes(request: Request, db: Session = Depends(get_db)):
 
     # get current user
     user = get_current_user(request, db)
@@ -77,9 +77,6 @@ def get_user_notes(request: Request, user_id: str, db: Session = Depends(get_db)
     # validate is user's match and user exists
     if user is None:
         raise HTTPException(status_code=401, detail="User not found")
-    
-    if user.id != user_id:
-        raise HTTPException(status_code=401, detail="Wrong user")
     
     # get all note data with the user's id
     query = """
@@ -94,10 +91,34 @@ def get_user_notes(request: Request, user_id: str, db: Session = Depends(get_db)
 
     return notes
 
-# get the contents of a note
-@router.get("/{user_id}/{note_id}")
-def get_note_contents(user_id: str, note_id: int, db: Session = Depends(get_db)):
-    return
+# get a note by id
+@router.get("/{note_id}")
+@token_auth()
+def get_note(request: Request, note_id: int, db: Session = Depends(get_db)):
+
+    user = get_current_user(request, db)
+
+    if user is None:
+        raise HTTPException(status_code=401, detail="User not found")
+ 
+    # get note contents
+    query = """
+        SELECT content FROM note WHERE id = :note_id AND user_id = :user_id
+    """
+
+    res = db.execute(text(query), {'note_id': note_id, 'user_id': uuid.UUID(user.id)}).one()
+
+    if res is None:
+        raise HTTPException(status_code=404, detail="Note not found")
+
+    # Extract content from JSONB structure
+    try:
+        content_data = json.loads(res.content) if isinstance(res.content, str) else res.content
+        # Return just the content string, not the full JSONB structure
+        return content_data.get("content", "")
+    except (json.JSONDecodeError, KeyError, TypeError):
+        # Fallback for legacy content or malformed JSON
+        return res.content
 
 # create a note
 @router.post("/")
@@ -121,10 +142,10 @@ async def create_note(request: Request, note: NoteCreate, db: Session = Depends(
         raise HTTPException(status_code=404, detail="Folder not found")
     
     # create note
-        # Convert text content to structured JSONB
+    # Convert text content to structured JSONB
     try:
         structured_content = {
-            "content": note.content,
+            "content": note.content or "",  # Handle None/empty content
             "metadata": {
                 "created_at": str(datetime.now()),
                 "format": note.format,
@@ -141,10 +162,69 @@ async def create_note(request: Request, note: NoteCreate, db: Session = Depends(
         RETURNING *
     """
 
-    res = db.execute(text(query), {"user_id": user_id, "name": note.title, "folder_id": note.folder_id, "content": json.dumps(structured_content), "format": note.format}).one()
+    res = db.execute(text(query), {
+        "user_id": user_id, 
+        "name": note.title, 
+        "folder_id": note.folder_id, 
+        "content": json.dumps(structured_content), 
+        "format": note.format
+    }).one()
 
     # insert note into database
     return Note.model_validate(res)
+
+# update a note
+@router.patch("/{note_id}")
+@token_auth()
+def update_note(request: Request, note_id: str, note: NoteEdit, db: Session = Depends(get_db)):
+
+    user = get_current_user(request, db)
+
+    print(f"note: {note}, note_id: {note_id}")
+
+    if user is None:
+        raise HTTPException(status_code=401, detail="User not found")
+    
+    # Structure content as JSONB (similar to create_note)
+    try:
+        structured_content = {
+            "content": note.content,
+            "metadata": {
+                "updated_at": str(datetime.now()),
+                "format": note.format,
+                "version": "1.0",
+                "title": note.title
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid content format: {str(e)}")
+    
+    # update note
+    query = """
+        UPDATE note SET name = :name, content = :content, format = :format 
+        WHERE id = :note_id AND user_id = :user_id
+        RETURNING *
+    """
+
+    res = db.execute(text(query), {
+        "name": note.title, 
+        "content": json.dumps(structured_content), 
+        "format": note.format, 
+        "note_id": note_id, 
+        "user_id": uuid.UUID(user.id)
+    }).one()
+
+    if res is None:
+        raise HTTPException(status_code=404, detail="Note not found")
+    
+    return Note.model_validate(res)
+
+# update a note
+@router.put("/{user_id}/{note_id}")
+@token_auth()
+def update_note(request: Request, user_id: str, note_id: int, note: NoteEdit, db: Session = Depends(get_db)):
+    return
+
 
 
 @router.put("/", response_model=NoteEdit)
